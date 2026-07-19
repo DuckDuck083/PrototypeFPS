@@ -555,6 +555,7 @@ GameObject:
   - component: {fileID: 1200000002}
   - component: {fileID: 1200000003}
   - component: {fileID: 1200000004}
+  - component: {fileID: 1200000005}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -630,6 +631,26 @@ MonoBehaviour:
   obstructionMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &1200000005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1200000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48ed3f6f30de4465bc212af880340c88, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  playerCamera: {fileID: 330585545}
+  magazineSize: 30
+  reserveAmmo: 90
+  secondsBetweenShots: 0.12
+  reloadTime: 1.4
+  range: 100
+  hitForce: 8
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
