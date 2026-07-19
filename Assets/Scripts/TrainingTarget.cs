@@ -12,7 +12,6 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private PlayerVitals player;
     private CharacterController controller;
     private Renderer[] renderers;
-    private Transform healthBarFill;
     private Vector3 spawnPosition;
     private float health;
     private float nextAttackTime;
@@ -33,7 +32,6 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         player = FindAnyObjectByType<PlayerVitals>();
         controller = GetComponent<CharacterController>();
         renderers = GetComponentsInChildren<Renderer>();
-        healthBarFill = transform.Find("Health Bar/Fill");
         spawnPosition = transform.position;
         health = maximumHealth;
     }
@@ -73,7 +71,6 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             return;
 
         health -= amount;
-        UpdateHealthBar();
         if (health <= 0f)
         {
             dead = true;
@@ -83,16 +80,6 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             foreach (Renderer targetRenderer in renderers)
                 targetRenderer.enabled = false;
         }
-    }
-
-    private void UpdateHealthBar()
-    {
-        if (healthBarFill == null)
-            return;
-
-        float ratio = Mathf.Clamp01(health / maximumHealth);
-        healthBarFill.localScale = new Vector3(0.82f * ratio, 0.08f, 0.08f);
-        healthBarFill.localPosition = new Vector3(-0.41f * (1f - ratio), 0f, -0.06f);
     }
 
     private void RemoveBulletHoles()
@@ -109,7 +96,6 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     {
         transform.position = spawnPosition;
         health = maximumHealth;
-        UpdateHealthBar();
         dead = false;
         controller.enabled = true;
         foreach (Renderer targetRenderer in renderers)
@@ -125,8 +111,34 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         dead = false;
         respawnTime = 0f;
         controller.enabled = wasEnabled || followsPlayer;
-        UpdateHealthBar();
         foreach (Renderer targetRenderer in renderers)
             targetRenderer.enabled = true;
+    }
+
+    private void OnGUI()
+    {
+        if (!followsPlayer || dead || player == null || Camera.main == null)
+            return;
+
+        Vector3 screenPoint = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 2.5f);
+        if (screenPoint.z <= 0f)
+            return;
+
+        float distance = Vector3.Distance(Camera.main.transform.position, transform.position);
+        if (distance > 45f)
+            return;
+
+        Vector3 visibilityStart = Camera.main.transform.position + Camera.main.transform.forward * 0.5f;
+        if (Physics.Linecast(visibilityStart, transform.position + Vector3.up * 1.8f, out RaycastHit visibilityHit)
+            && visibilityHit.transform.root != transform)
+            return;
+
+        float width = Mathf.Lerp(90f, 45f, distance / 45f);
+        Rect background = new Rect(screenPoint.x - width * 0.5f, Screen.height - screenPoint.y, width, 8f);
+        GUI.color = new Color(0f, 0f, 0f, 0.8f);
+        GUI.DrawTexture(background, Texture2D.whiteTexture);
+        GUI.color = new Color(0.15f, 0.9f, 0.22f);
+        GUI.DrawTexture(new Rect(background.x + 1f, background.y + 1f, (background.width - 2f) * Mathf.Clamp01(health / maximumHealth), background.height - 2f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
     }
 }

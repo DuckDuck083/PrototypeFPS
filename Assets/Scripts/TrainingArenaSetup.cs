@@ -130,16 +130,6 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         AddPart(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 1f, 0f), new Vector3(0.75f, 0.9f, 0.75f), material);
         AddPart(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.85f, 0f), Vector3.one * 0.55f, material, true);
 
-        if (followsPlayer)
-        {
-            Transform healthBar = new GameObject("Health Bar").transform;
-            healthBar.SetParent(root.transform, false);
-            healthBar.localPosition = new Vector3(0f, 2.45f, 0f);
-            healthBar.gameObject.AddComponent<WorldHealthBar>();
-            AddPart(healthBar, "Background", PrimitiveType.Cube, Vector3.zero, new Vector3(0.9f, 0.12f, 0.08f), CreateArenaMaterial(new Color(0.03f, 0.03f, 0.03f), 0f, 0f));
-            AddPart(healthBar, "Fill", PrimitiveType.Cube, new Vector3(0f, 0f, -0.06f), new Vector3(0.82f, 0.08f, 0.08f), CreateArenaMaterial(new Color(0.1f, 0.9f, 0.2f), 0f, 0.2f));
-        }
-
         if (!followsPlayer)
         {
             AddPart(root.transform, "Stand", PrimitiveType.Cube, new Vector3(0f, 0.08f, 0f), new Vector3(1.4f, 0.16f, 1.4f), material);

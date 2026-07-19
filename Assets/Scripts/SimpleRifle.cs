@@ -57,8 +57,9 @@ public sealed class SimpleRifle : MonoBehaviour
     private bool lastHitWasCritical;
     private bool isReloading;
     private bool isChargingSniper;
+    private bool sniperScopeToggled;
 
-    private bool IsAiming => currentWeapon != WeaponType.Melee && aimAction.IsPressed() && !isReloading;
+    private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (currentWeapon == WeaponType.Sniper ? sniperScopeToggled : aimAction.IsPressed());
     private int CurrentAmmo => currentWeapon == WeaponType.Rifle ? rifleAmmo : currentWeapon == WeaponType.Handgun ? handgunAmmo : sniperAmmo;
     private int CurrentReserve => currentWeapon == WeaponType.Rifle ? rifleReserveAmmo : currentWeapon == WeaponType.Handgun ? handgunReserveAmmo : sniperReserveAmmo;
     private int CurrentMagazineSize => currentWeapon == WeaponType.Rifle ? rifleMagazineSize : currentWeapon == WeaponType.Handgun ? handgunMagazineSize : sniperMagazineSize;
@@ -121,6 +122,9 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void Update()
     {
+        if (currentWeapon == WeaponType.Sniper && !isReloading && aimAction.WasPressedThisFrame())
+            sniperScopeToggled = !sniperScopeToggled;
+
         if (!isReloading)
         {
             if (rifleSelectAction.WasPressedThisFrame()) SelectWeapon(WeaponType.Rifle);
@@ -170,6 +174,7 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         isChargingSniper = false;
         sniperCharge = 0f;
+        sniperScopeToggled = false;
         currentWeapon = weapon;
         rifleModel.gameObject.SetActive(weapon == WeaponType.Rifle);
         handgunModel.gameObject.SetActive(weapon == WeaponType.Handgun);
@@ -315,6 +320,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private IEnumerator Reload()
     {
         isReloading = true;
+        sniperScopeToggled = false;
         SetCurrentModelVisible(true);
         playerCamera.fieldOfView = normalFieldOfView;
         float reloadDuration = currentWeapon == WeaponType.Handgun ? 1.05f : currentWeapon == WeaponType.Sniper ? 2.15f : 1.55f;
