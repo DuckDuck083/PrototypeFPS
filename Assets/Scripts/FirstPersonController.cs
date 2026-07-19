@@ -26,6 +26,7 @@ public sealed class FirstPersonController : MonoBehaviour
     [SerializeField] private LayerMask obstructionMask = ~0;
 
     private CharacterController characterController;
+    private PlayerVitals playerVitals;
     private InputAction moveAction;
     private InputAction lookAction;
     private InputAction jumpAction;
@@ -39,6 +40,7 @@ public sealed class FirstPersonController : MonoBehaviour
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
+        playerVitals = GetComponent<PlayerVitals>();
 
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
@@ -88,7 +90,9 @@ public sealed class FirstPersonController : MonoBehaviour
         Vector3 horizontalMovement = transform.right * input.x + transform.forward * input.y;
         horizontalMovement = Vector3.ClampMagnitude(horizontalMovement, 1f);
 
-        float speed = isCrouching ? crouchSpeed : sprintAction.IsPressed() ? sprintSpeed : walkSpeed;
+        bool wantsToSprint = !isCrouching && input.sqrMagnitude > 0.01f && sprintAction.IsPressed();
+        bool isSprinting = wantsToSprint && (playerVitals == null || playerVitals.UseSprintStamina());
+        float speed = isCrouching ? crouchSpeed : isSprinting ? sprintSpeed : walkSpeed;
 
         if (characterController.isGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;

@@ -100,6 +100,9 @@ public sealed class SimpleRifle : MonoBehaviour
             if (hit.rigidbody != null)
                 hit.rigidbody.AddForceAtPosition(ray.direction * hitForce, hit.point, ForceMode.Impulse);
 
+            IDamageable damageable = hit.collider.GetComponentInParent<IDamageable>();
+            damageable?.TakeDamage(25f);
+
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
 

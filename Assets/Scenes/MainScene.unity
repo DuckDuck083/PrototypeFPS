@@ -556,6 +556,8 @@ GameObject:
   - component: {fileID: 1200000003}
   - component: {fileID: 1200000004}
   - component: {fileID: 1200000005}
+  - component: {fileID: 1200000006}
+  - component: {fileID: 1200000007}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -651,6 +653,35 @@ MonoBehaviour:
   reloadTime: 1.4
   range: 100
   hitForce: 8
+--- !u!114 &1200000006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1200000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91fdb64ff3664aa7a34e6367fd4e9c62, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  maximumHealth: 100
+  maximumStamina: 100
+  staminaDrainPerSecond: 24
+  staminaRecoveryPerSecond: 18
+  recoveryDelay: 0.8
+--- !u!114 &1200000007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1200000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca6e02cf9ace468caec68ce93db8ff20, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
