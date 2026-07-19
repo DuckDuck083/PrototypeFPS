@@ -6,12 +6,19 @@ public sealed class TrainingArenaSetup : MonoBehaviour
     {
         ImproveSceneLighting();
         BuildArena();
-        CreateTarget("Training Dummy", new Vector3(0f, 0f, 9f), new Color(0.15f, 0.45f, 0.9f), false);
-        CreateTarget("Enemy 1", new Vector3(10f, 0f, 10f), new Color(0.85f, 0.12f, 0.1f), true);
-        CreateTarget("Enemy 2", new Vector3(-14f, 0f, 15f), new Color(0.9f, 0.22f, 0.08f), true);
-        CreateTarget("Enemy 3", new Vector3(19f, 0f, -12f), new Color(0.72f, 0.08f, 0.14f), true);
-        CreateTarget("Enemy 4", new Vector3(-22f, 0f, -18f), new Color(0.82f, 0.13f, 0.3f), true);
-        CreateTarget("Enemy 5", new Vector3(2f, 0f, 28f), new Color(0.95f, 0.3f, 0.06f), true);
+        CreateTarget("Training Dummy", new Vector3(0f, 0f, 9f), new Color(0.15f, 0.45f, 0.9f), false, 150f, 0f, 0f);
+        CreateTarget("Enemy Scout", new Vector3(10f, 0f, 10f), new Color(0.95f, 0.3f, 0.08f), true, 45f, 3.6f, 3f);
+        CreateTarget("Enemy Grunt", new Vector3(-14f, 0f, 15f), new Color(0.85f, 0.12f, 0.1f), true, 70f, 2.4f, 5f);
+        CreateTarget("Enemy Heavy", new Vector3(19f, 0f, -12f), new Color(0.5f, 0.08f, 0.12f), true, 150f, 1.45f, 9f);
+        CreateTarget("Enemy Raider", new Vector3(-22f, 0f, -18f), new Color(0.82f, 0.13f, 0.3f), true, 80f, 2.8f, 6f);
+        CreateTarget("Enemy Hunter", new Vector3(2f, 0f, 28f), new Color(0.75f, 0.25f, 0.05f), true, 100f, 2.1f, 7f);
+
+        CreatePickup(new Vector3(5f, 0.7f, 5f), ArenaPickup.PickupType.Health);
+        CreatePickup(new Vector3(-18f, 0.7f, 10f), ArenaPickup.PickupType.Health);
+        CreatePickup(new Vector3(22f, 0.7f, -20f), ArenaPickup.PickupType.Health);
+        CreatePickup(new Vector3(-6f, 0.7f, -12f), ArenaPickup.PickupType.Ammo);
+        CreatePickup(new Vector3(18f, 0.7f, 18f), ArenaPickup.PickupType.Ammo);
+        CreatePickup(new Vector3(-25f, 0.7f, -25f), ArenaPickup.PickupType.Ammo);
     }
 
     private static void ImproveSceneLighting()
@@ -59,6 +66,34 @@ public sealed class TrainingArenaSetup : MonoBehaviour
 
         CreateBlock("Center Platform", new Vector3(0f, 0.35f, 0f), new Vector3(10f, 0.7f, 10f), cover);
         CreateBlock("Long Range Platform", new Vector3(0f, 0.6f, 31f), new Vector3(14f, 1.2f, 6f), accent);
+        CreateBlock("West Tower", new Vector3(-30f, 2f, 22f), new Vector3(7f, 4f, 7f), wall);
+        CreateBlock("East Tower", new Vector3(30f, 2f, -22f), new Vector3(7f, 4f, 7f), wall);
+        CreateRamp("West Ramp", new Vector3(-25f, 1f, 22f), new Vector3(7f, 0.7f, 4f), -18f, cover);
+        CreateRamp("East Ramp", new Vector3(25f, 1f, -22f), new Vector3(7f, 0.7f, 4f), 18f, cover);
+    }
+
+    private static void CreateRamp(string name, Vector3 position, Vector3 scale, float zRotation, Material material)
+    {
+        GameObject ramp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        ramp.name = name;
+        ramp.transform.position = position;
+        ramp.transform.localScale = scale;
+        ramp.transform.rotation = Quaternion.Euler(0f, 0f, zRotation);
+        ramp.GetComponent<Renderer>().material = material;
+    }
+
+    private static void CreatePickup(Vector3 position, ArenaPickup.PickupType type)
+    {
+        GameObject pickup = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        pickup.transform.position = position;
+        pickup.transform.localScale = type == ArenaPickup.PickupType.Health ? new Vector3(0.8f, 0.5f, 0.8f) : new Vector3(0.65f, 0.65f, 0.65f);
+        pickup.GetComponent<Renderer>().material = CreateArenaMaterial(type == ArenaPickup.PickupType.Health ? new Color(0.1f, 0.9f, 0.25f) : new Color(1f, 0.65f, 0.08f), 0.2f, 0.65f);
+        pickup.GetComponent<Collider>().isTrigger = true;
+        Rigidbody body = pickup.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.useGravity = false;
+        ArenaPickup arenaPickup = pickup.AddComponent<ArenaPickup>();
+        arenaPickup.Configure(type);
     }
 
     private static void CreateBlock(string name, Vector3 position, Vector3 scale, Material material)
@@ -79,7 +114,7 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         return material;
     }
 
-    private static void CreateTarget(string targetName, Vector3 position, Color color, bool followsPlayer)
+    private static void CreateTarget(string targetName, Vector3 position, Color color, bool followsPlayer, float health, float speed, float damage)
     {
         GameObject root = new GameObject(targetName);
         root.transform.position = position;
@@ -95,13 +130,22 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         AddPart(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 1f, 0f), new Vector3(0.75f, 0.9f, 0.75f), material);
         AddPart(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.85f, 0f), Vector3.one * 0.55f, material);
 
+        if (followsPlayer)
+        {
+            Transform healthBar = new GameObject("Health Bar").transform;
+            healthBar.SetParent(root.transform, false);
+            healthBar.localPosition = new Vector3(0f, 2.45f, 0f);
+            AddPart(healthBar, "Background", PrimitiveType.Cube, Vector3.zero, new Vector3(0.9f, 0.12f, 0.08f), CreateArenaMaterial(new Color(0.03f, 0.03f, 0.03f), 0f, 0f));
+            AddPart(healthBar, "Fill", PrimitiveType.Cube, new Vector3(0f, 0f, -0.06f), new Vector3(0.82f, 0.08f, 0.08f), CreateArenaMaterial(new Color(0.1f, 0.9f, 0.2f), 0f, 0.2f));
+        }
+
         if (!followsPlayer)
         {
             AddPart(root.transform, "Stand", PrimitiveType.Cube, new Vector3(0f, 0.08f, 0f), new Vector3(1.4f, 0.16f, 1.4f), material);
         }
 
         TrainingTarget target = root.AddComponent<TrainingTarget>();
-        target.Configure(followsPlayer);
+        target.Configure(followsPlayer, health, speed, damage);
     }
 
     private static void AddPart(Transform parent, string partName, PrimitiveType shape, Vector3 localPosition, Vector3 scale, Material material)

@@ -45,6 +45,15 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
             RespawnPlayer();
     }
 
+    public bool Heal(float amount)
+    {
+        if (Health >= maximumHealth)
+            return false;
+
+        Health = Mathf.Min(maximumHealth, Health + amount);
+        return true;
+    }
+
     private void RespawnPlayer()
     {
         CharacterController controller = GetComponent<CharacterController>();

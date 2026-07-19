@@ -50,7 +50,10 @@ public sealed class SimpleRifle : MonoBehaviour
     private int sniperAmmo;
     private float nextShotTime;
     private float normalFieldOfView;
+    private float sniperCharge;
+    private const float MaximumSniperChargeTime = 1.5f;
     private bool isReloading;
+    private bool isChargingSniper;
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && aimAction.IsPressed() && !isReloading;
     private int CurrentAmmo => currentWeapon == WeaponType.Rifle ? rifleAmmo : currentWeapon == WeaponType.Handgun ? handgunAmmo : sniperAmmo;
@@ -126,14 +129,44 @@ public sealed class SimpleRifle : MonoBehaviour
         if (reloadAction.WasPressedThisFrame())
             TryReload();
 
-        if (!isReloading && attackAction.IsPressed() && Time.time >= nextShotTime)
+        if (!isReloading && currentWeapon == WeaponType.Sniper)
+            UpdateSniperCharge();
+        else if (!isReloading && attackAction.IsPressed() && Time.time >= nextShotTime)
             Shoot();
 
         UpdateAimingVisuals();
     }
 
+    private void UpdateSniperCharge()
+    {
+        if (CurrentAmmo <= 0)
+        {
+            if (attackAction.WasPressedThisFrame()) TryReload();
+            return;
+        }
+
+        if (attackAction.WasPressedThisFrame() && Time.time >= nextShotTime)
+        {
+            isChargingSniper = true;
+            sniperCharge = 0f;
+        }
+
+        if (isChargingSniper && attackAction.IsPressed())
+            sniperCharge = Mathf.Min(MaximumSniperChargeTime, sniperCharge + Time.deltaTime);
+
+        if (isChargingSniper && attackAction.WasReleasedThisFrame())
+        {
+            float chargeRatio = sniperCharge / MaximumSniperChargeTime;
+            isChargingSniper = false;
+            Shoot(chargeRatio);
+            sniperCharge = 0f;
+        }
+    }
+
     private void SelectWeapon(WeaponType weapon)
     {
+        isChargingSniper = false;
+        sniperCharge = 0f;
         currentWeapon = weapon;
         rifleModel.gameObject.SetActive(weapon == WeaponType.Rifle);
         handgunModel.gameObject.SetActive(weapon == WeaponType.Handgun);
@@ -163,7 +196,7 @@ public sealed class SimpleRifle : MonoBehaviour
         playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, IsAiming ? aimedFov : normalFieldOfView, 12f * Time.deltaTime);
     }
 
-    private void Shoot()
+    private void Shoot(float sniperChargeRatio = 0f)
     {
         if (currentWeapon == WeaponType.Melee)
         {
@@ -179,7 +212,7 @@ public sealed class SimpleRifle : MonoBehaviour
 
         bool aimedShot = IsAiming;
         float baseDelay = currentWeapon == WeaponType.Rifle ? 0.12f : currentWeapon == WeaponType.Handgun ? 0.28f : 1.1f;
-        float damage = currentWeapon == WeaponType.Rifle ? 25f : currentWeapon == WeaponType.Handgun ? 18f : 100f;
+        float damage = currentWeapon == WeaponType.Rifle ? 25f : currentWeapon == WeaponType.Handgun ? 18f : Mathf.Lerp(70f, 160f, sniperChargeRatio);
         if (aimedShot)
         {
             baseDelay *= 0.78f;
@@ -238,6 +271,13 @@ public sealed class SimpleRifle : MonoBehaviour
         if (currentWeapon == WeaponType.Rifle) rifleReserveAmmo = amount;
         else if (currentWeapon == WeaponType.Handgun) handgunReserveAmmo = amount;
         else sniperReserveAmmo = amount;
+    }
+
+    public void AddReserveAmmo(int rifleRounds, int handgunRounds, int sniperRounds)
+    {
+        rifleReserveAmmo += rifleRounds;
+        handgunReserveAmmo += handgunRounds;
+        sniperReserveAmmo += sniperRounds;
     }
 
     private void TryReload()
@@ -397,9 +437,13 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void OnGUI()
     {
+        if (currentWeapon == WeaponType.Sniper && IsAiming)
+            DrawSniperScope();
+
         GUIStyle centered = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
         centered.normal.textColor = Color.white;
-        GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
+        if (!(currentWeapon == WeaponType.Sniper && IsAiming))
+            GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
         string weaponName = currentWeapon == WeaponType.Rifle ? "RIFLE [1]" : currentWeapon == WeaponType.Handgun ? "HANDGUN [2]" : currentWeapon == WeaponType.Melee ? "BATON [3]" : "SNIPER [4]";
         string ammoText = currentWeapon == WeaponType.Melee ? weaponName : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
         GUI.color = new Color(0f, 0f, 0f, 0.65f);
@@ -409,5 +453,32 @@ public sealed class SimpleRifle : MonoBehaviour
         GUIStyle help = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = 13 };
         help.normal.textColor = new Color(0.75f, 0.82f, 0.88f);
         GUI.Label(new Rect(Screen.width * 0.5f - 250f, 12f, 500f, 28f), "[1] Rifle   [2] Handgun   [3] Baton   [4] Sniper    RMB Aim    R Reload", help);
+
+        if (isChargingSniper)
+        {
+            float fill = sniperCharge / MaximumSniperChargeTime;
+            Rect bar = new Rect(Screen.width * 0.5f - 120f, Screen.height - 115f, 240f, 18f);
+            GUI.color = Color.black;
+            GUI.DrawTexture(bar, Texture2D.whiteTexture);
+            GUI.color = Color.Lerp(new Color(0.2f, 0.65f, 1f), Color.white, fill);
+            GUI.DrawTexture(new Rect(bar.x + 2f, bar.y + 2f, (bar.width - 4f) * fill, bar.height - 4f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(bar.x, bar.y - 22f, bar.width, 20f), "SNIPER CHARGE", help);
+        }
+    }
+
+    private static void DrawSniperScope()
+    {
+        float size = Mathf.Min(Screen.width, Screen.height) * 0.72f;
+        float left = (Screen.width - size) * 0.5f;
+        float top = (Screen.height - size) * 0.5f;
+        GUI.color = Color.black;
+        GUI.DrawTexture(new Rect(0f, 0f, left, Screen.height), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(left + size, 0f, Screen.width - left - size, Screen.height), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(left, 0f, size, top), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(left, top + size, size, Screen.height - top - size), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(Screen.width * 0.5f - 1f, top, 2f, size), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(left, Screen.height * 0.5f - 1f, size, 2f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
     }
 }

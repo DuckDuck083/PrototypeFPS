@@ -12,16 +12,19 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private PlayerVitals player;
     private CharacterController controller;
     private Renderer[] renderers;
+    private Transform healthBarFill;
     private Vector3 spawnPosition;
     private float health;
     private float nextAttackTime;
     private float respawnTime;
     private bool dead;
 
-    public void Configure(bool shouldFollowPlayer)
+    public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
         followsPlayer = shouldFollowPlayer;
-        maximumHealth = shouldFollowPlayer ? 60f : 100f;
+        maximumHealth = healthAmount;
+        moveSpeed = speed;
+        attackDamage = damage;
         health = maximumHealth;
     }
 
@@ -30,6 +33,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         player = FindAnyObjectByType<PlayerVitals>();
         controller = GetComponent<CharacterController>();
         renderers = GetComponentsInChildren<Renderer>();
+        healthBarFill = transform.Find("Health Bar/Fill");
         spawnPosition = transform.position;
         health = maximumHealth;
     }
@@ -69,6 +73,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             return;
 
         health -= amount;
+        UpdateHealthBar();
         if (health <= 0f)
         {
             dead = true;
@@ -78,6 +83,16 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             foreach (Renderer targetRenderer in renderers)
                 targetRenderer.enabled = false;
         }
+    }
+
+    private void UpdateHealthBar()
+    {
+        if (healthBarFill == null)
+            return;
+
+        float ratio = Mathf.Clamp01(health / maximumHealth);
+        healthBarFill.localScale = new Vector3(0.82f * ratio, 0.08f, 0.08f);
+        healthBarFill.localPosition = new Vector3(-0.41f * (1f - ratio), 0f, -0.06f);
     }
 
     private void RemoveBulletHoles()
@@ -94,6 +109,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     {
         transform.position = spawnPosition;
         health = maximumHealth;
+        UpdateHealthBar();
         dead = false;
         controller.enabled = true;
         foreach (Renderer targetRenderer in renderers)
