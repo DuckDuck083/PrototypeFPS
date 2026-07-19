@@ -115,4 +115,18 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         foreach (Renderer targetRenderer in renderers)
             targetRenderer.enabled = true;
     }
+
+    public void ResetToSpawn()
+    {
+        bool wasEnabled = controller.enabled;
+        controller.enabled = false;
+        transform.position = spawnPosition;
+        health = maximumHealth;
+        dead = false;
+        respawnTime = 0f;
+        controller.enabled = wasEnabled || followsPlayer;
+        UpdateHealthBar();
+        foreach (Renderer targetRenderer in renderers)
+            targetRenderer.enabled = true;
+    }
 }

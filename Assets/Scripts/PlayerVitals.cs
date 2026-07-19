@@ -13,6 +13,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     public bool CanSprint => Stamina > 0.1f;
 
     private float lastStaminaUseTime;
+    private float damageFlash;
+    private float invulnerableUntil;
     private Vector3 spawnPosition;
 
     private void Awake()
@@ -26,6 +28,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     {
         if (Time.time >= lastStaminaUseTime + recoveryDelay)
             Stamina = Mathf.MoveTowards(Stamina, maximumStamina, staminaRecoveryPerSecond * Time.deltaTime);
+
+        damageFlash = Mathf.MoveTowards(damageFlash, 0f, 1.8f * Time.deltaTime);
     }
 
     public bool UseSprintStamina()
@@ -40,7 +44,11 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
     public void TakeDamage(float amount)
     {
+        if (Time.time < invulnerableUntil)
+            return;
+
         Health = Mathf.Max(0f, Health - amount);
+        damageFlash = Mathf.Clamp01(damageFlash + amount / 35f);
         if (Health <= 0f)
             RespawnPlayer();
     }
@@ -62,10 +70,25 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         controller.enabled = true;
         Health = maximumHealth;
         Stamina = maximumStamina;
+        invulnerableUntil = Time.time + 3f;
+
+        TrainingTarget[] targets = FindObjectsByType<TrainingTarget>();
+        foreach (TrainingTarget target in targets)
+            target.ResetToSpawn();
     }
 
     private void OnGUI()
     {
+        if (damageFlash > 0f)
+        {
+            GUI.color = new Color(0.75f, 0f, 0f, damageFlash * 0.22f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+
+        GUI.color = new Color(0f, 0f, 0f, 0.68f);
+        GUI.DrawTexture(new Rect(15f, Screen.height - 92f, 245f, 72f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
         DrawBar(new Rect(25f, Screen.height - 75f, 220f, 20f), Health / maximumHealth, new Color(0.8f, 0.12f, 0.12f), $"HEALTH  {Mathf.CeilToInt(Health)}");
         DrawBar(new Rect(25f, Screen.height - 45f, 220f, 16f), Stamina / maximumStamina, new Color(0.15f, 0.7f, 0.25f), $"STAMINA  {Mathf.CeilToInt(Stamina)}");
     }

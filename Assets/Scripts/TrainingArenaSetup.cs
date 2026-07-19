@@ -51,10 +51,11 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         Material cover = CreateArenaMaterial(new Color(0.24f, 0.27f, 0.29f), 0.3f, 0.45f);
         Material accent = CreateArenaMaterial(new Color(0.12f, 0.32f, 0.42f), 0.2f, 0.55f);
 
-        CreateBlock("North Wall", new Vector3(0f, 3f, 39f), new Vector3(80f, 6f, 1f), wall);
-        CreateBlock("South Wall", new Vector3(0f, 3f, -39f), new Vector3(80f, 6f, 1f), wall);
-        CreateBlock("East Wall", new Vector3(39f, 3f, 0f), new Vector3(1f, 6f, 80f), wall);
-        CreateBlock("West Wall", new Vector3(-39f, 3f, 0f), new Vector3(1f, 6f, 80f), wall);
+        CreateBlock("Foundation", new Vector3(0f, -1.55f, 0f), new Vector3(120f, 3f, 120f), wall);
+        CreateBlock("North Wall", new Vector3(0f, 3f, 58f), new Vector3(118f, 6f, 2f), wall);
+        CreateBlock("South Wall", new Vector3(0f, 3f, -58f), new Vector3(118f, 6f, 2f), wall);
+        CreateBlock("East Wall", new Vector3(58f, 3f, 0f), new Vector3(2f, 6f, 118f), wall);
+        CreateBlock("West Wall", new Vector3(-58f, 3f, 0f), new Vector3(2f, 6f, 118f), wall);
 
         Vector3[] coverPositions =
         {
@@ -64,7 +65,6 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         for (int i = 0; i < coverPositions.Length; i++)
             CreateBlock($"Cover {i + 1}", coverPositions[i], new Vector3(4f, 2f, 1.3f), i % 2 == 0 ? cover : accent);
 
-        CreateBlock("Center Platform", new Vector3(0f, 0.35f, 0f), new Vector3(10f, 0.7f, 10f), cover);
         CreateBlock("Long Range Platform", new Vector3(0f, 0.6f, 31f), new Vector3(14f, 1.2f, 6f), accent);
         CreateBlock("West Tower", new Vector3(-30f, 2f, 22f), new Vector3(7f, 4f, 7f), wall);
         CreateBlock("East Tower", new Vector3(30f, 2f, -22f), new Vector3(7f, 4f, 7f), wall);
@@ -120,21 +120,22 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         root.transform.position = position;
 
         CharacterController controller = root.AddComponent<CharacterController>();
-        controller.height = 2f;
+        controller.height = 1.55f;
         controller.radius = 0.45f;
-        controller.center = Vector3.up;
+        controller.center = Vector3.up * 0.775f;
 
         Material material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         material.color = color;
 
         AddPart(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 1f, 0f), new Vector3(0.75f, 0.9f, 0.75f), material);
-        AddPart(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.85f, 0f), Vector3.one * 0.55f, material);
+        AddPart(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.85f, 0f), Vector3.one * 0.55f, material, true);
 
         if (followsPlayer)
         {
             Transform healthBar = new GameObject("Health Bar").transform;
             healthBar.SetParent(root.transform, false);
             healthBar.localPosition = new Vector3(0f, 2.45f, 0f);
+            healthBar.gameObject.AddComponent<WorldHealthBar>();
             AddPart(healthBar, "Background", PrimitiveType.Cube, Vector3.zero, new Vector3(0.9f, 0.12f, 0.08f), CreateArenaMaterial(new Color(0.03f, 0.03f, 0.03f), 0f, 0f));
             AddPart(healthBar, "Fill", PrimitiveType.Cube, new Vector3(0f, 0f, -0.06f), new Vector3(0.82f, 0.08f, 0.08f), CreateArenaMaterial(new Color(0.1f, 0.9f, 0.2f), 0f, 0.2f));
         }
@@ -148,7 +149,7 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         target.Configure(followsPlayer, health, speed, damage);
     }
 
-    private static void AddPart(Transform parent, string partName, PrimitiveType shape, Vector3 localPosition, Vector3 scale, Material material)
+    private static void AddPart(Transform parent, string partName, PrimitiveType shape, Vector3 localPosition, Vector3 scale, Material material, bool keepCollider = false)
     {
         GameObject part = GameObject.CreatePrimitive(shape);
         part.name = partName;
@@ -156,6 +157,7 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         part.transform.localPosition = localPosition;
         part.transform.localScale = scale;
         part.GetComponent<Renderer>().material = material;
-        Destroy(part.GetComponent<Collider>());
+        if (!keepCollider)
+            Destroy(part.GetComponent<Collider>());
     }
 }

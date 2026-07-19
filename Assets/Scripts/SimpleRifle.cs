@@ -23,7 +23,6 @@ public sealed class SimpleRifle : MonoBehaviour
     [SerializeField, Min(0)] private int sniperReserveAmmo = 20;
 
     [Header("Shared")]
-    [SerializeField, Min(0.1f)] private float reloadTime = 1.4f;
     [SerializeField, Min(1f)] private float range = 100f;
     [SerializeField, Min(0f)] private float hitForce = 8f;
 
@@ -52,6 +51,10 @@ public sealed class SimpleRifle : MonoBehaviour
     private float normalFieldOfView;
     private float sniperCharge;
     private const float MaximumSniperChargeTime = 1.5f;
+    private float reloadProgress;
+    private float hitMarkerUntil;
+    private float lastDamageAmount;
+    private bool lastHitWasCritical;
     private bool isReloading;
     private bool isChargingSniper;
 
@@ -139,25 +142,25 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void UpdateSniperCharge()
     {
+        if (!IsAiming)
+        {
+            isChargingSniper = false;
+            sniperCharge = 0f;
+            return;
+        }
+
         if (CurrentAmmo <= 0)
         {
             if (attackAction.WasPressedThisFrame()) TryReload();
             return;
         }
 
+        isChargingSniper = true;
+        sniperCharge = Mathf.Min(MaximumSniperChargeTime, sniperCharge + Time.deltaTime);
+
         if (attackAction.WasPressedThisFrame() && Time.time >= nextShotTime)
         {
-            isChargingSniper = true;
-            sniperCharge = 0f;
-        }
-
-        if (isChargingSniper && attackAction.IsPressed())
-            sniperCharge = Mathf.Min(MaximumSniperChargeTime, sniperCharge + Time.deltaTime);
-
-        if (isChargingSniper && attackAction.WasReleasedThisFrame())
-        {
             float chargeRatio = sniperCharge / MaximumSniperChargeTime;
-            isChargingSniper = false;
             Shoot(chargeRatio);
             sniperCharge = 0f;
         }
@@ -194,6 +197,14 @@ public sealed class SimpleRifle : MonoBehaviour
         currentModel.localRotation = Quaternion.Slerp(currentModel.localRotation, Quaternion.identity, 18f * Time.deltaTime);
         float aimedFov = currentWeapon == WeaponType.Sniper ? 25f : 48f;
         playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, IsAiming ? aimedFov : normalFieldOfView, 12f * Time.deltaTime);
+        SetCurrentModelVisible(!(currentWeapon == WeaponType.Sniper && IsAiming));
+    }
+
+    private void SetCurrentModelVisible(bool visible)
+    {
+        Renderer[] modelRenderers = currentModel.GetComponentsInChildren<Renderer>(true);
+        foreach (Renderer modelRenderer in modelRenderers)
+            modelRenderer.enabled = visible;
     }
 
     private void Shoot(float sniperChargeRatio = 0f)
@@ -233,8 +244,7 @@ public sealed class SimpleRifle : MonoBehaviour
             if (hit.rigidbody != null)
                 hit.rigidbody.AddForceAtPosition(ray.direction * hitForce, hit.point, ForceMode.Impulse);
 
-            IDamageable damageable = hit.collider.GetComponentInParent<IDamageable>();
-            damageable?.TakeDamage(damage);
+            ApplyDamage(hit, damage);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
 
@@ -253,10 +263,26 @@ public sealed class SimpleRifle : MonoBehaviour
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         if (Physics.SphereCast(ray, 0.35f, out RaycastHit hit, 2.4f, ~0, QueryTriggerInteraction.Ignore))
         {
-            IDamageable damageable = hit.collider.GetComponentInParent<IDamageable>();
-            damageable?.TakeDamage(45f);
+            ApplyDamage(hit, 45f);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
+    }
+
+    private void ApplyDamage(RaycastHit hit, float baseDamage)
+    {
+        IDamageable damageable = hit.collider.GetComponentInParent<IDamageable>();
+        if (damageable == null)
+            return;
+
+        bool headshot = hit.collider.gameObject.name == "Head";
+        bool randomCritical = Random.value < 0.02f;
+        bool critical = headshot || randomCritical;
+        float finalDamage = critical ? baseDamage * 3f : baseDamage;
+        damageable.TakeDamage(finalDamage);
+
+        lastDamageAmount = finalDamage;
+        lastHitWasCritical = critical;
+        hitMarkerUntil = Time.time + 0.35f;
     }
 
     private void SetCurrentAmmo(int amount)
@@ -289,12 +315,15 @@ public sealed class SimpleRifle : MonoBehaviour
     private IEnumerator Reload()
     {
         isReloading = true;
+        SetCurrentModelVisible(true);
         playerCamera.fieldOfView = normalFieldOfView;
+        float reloadDuration = currentWeapon == WeaponType.Handgun ? 1.05f : currentWeapon == WeaponType.Sniper ? 2.15f : 1.55f;
         float elapsed = 0f;
-        while (elapsed < reloadTime)
+        while (elapsed < reloadDuration)
         {
             elapsed += Time.deltaTime;
-            float progress = Mathf.Clamp01(elapsed / reloadTime);
+            reloadProgress = Mathf.Clamp01(elapsed / reloadDuration);
+            float progress = reloadProgress;
             float motion = Mathf.Sin(progress * Mathf.PI);
             currentModel.localPosition = currentRestPosition + new Vector3(0f, -0.28f * motion, -0.08f * motion);
             currentModel.localRotation = Quaternion.Euler(18f * motion, 0f, -28f * motion);
@@ -306,6 +335,7 @@ public sealed class SimpleRifle : MonoBehaviour
         SetCurrentReserve(CurrentReserve - loaded);
         currentModel.localPosition = currentRestPosition;
         currentModel.localRotation = Quaternion.identity;
+        reloadProgress = 0f;
         isReloading = false;
     }
 
@@ -454,6 +484,19 @@ public sealed class SimpleRifle : MonoBehaviour
         help.normal.textColor = new Color(0.75f, 0.82f, 0.88f);
         GUI.Label(new Rect(Screen.width * 0.5f - 250f, 12f, 500f, 28f), "[1] Rifle   [2] Handgun   [3] Baton   [4] Sniper    RMB Aim    R Reload", help);
 
+        if (Time.time < hitMarkerUntil)
+            DrawHitMarker(centered);
+
+        if (isReloading)
+        {
+            Rect reloadBar = new Rect(Screen.width - 285f, Screen.height - 34f, 245f, 8f);
+            GUI.color = new Color(0.05f, 0.06f, 0.07f, 0.9f);
+            GUI.DrawTexture(reloadBar, Texture2D.whiteTexture);
+            GUI.color = new Color(0.2f, 0.7f, 1f);
+            GUI.DrawTexture(new Rect(reloadBar.x, reloadBar.y, reloadBar.width * reloadProgress, reloadBar.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+
         if (isChargingSniper)
         {
             float fill = sniperCharge / MaximumSniperChargeTime;
@@ -465,6 +508,20 @@ public sealed class SimpleRifle : MonoBehaviour
             GUI.color = Color.white;
             GUI.Label(new Rect(bar.x, bar.y - 22f, bar.width, 20f), "SNIPER CHARGE", help);
         }
+    }
+
+    private void DrawHitMarker(GUIStyle centered)
+    {
+        Color markerColor = lastHitWasCritical ? new Color(1f, 0.2f, 0.12f) : Color.white;
+        GUIStyle marker = new GUIStyle(centered) { fontSize = lastHitWasCritical ? 30 : 25, fontStyle = FontStyle.Bold };
+        marker.normal.textColor = markerColor;
+        string symbol = lastHitWasCritical ? "✦" : "×";
+        GUI.Label(new Rect(Screen.width * 0.5f - 25f, Screen.height * 0.5f - 25f, 50f, 50f), symbol, marker);
+
+        GUIStyle damage = new GUIStyle(centered) { fontSize = 16, fontStyle = FontStyle.Bold };
+        damage.normal.textColor = markerColor;
+        string label = lastHitWasCritical ? $"CRITICAL  {Mathf.RoundToInt(lastDamageAmount)}" : $"{Mathf.RoundToInt(lastDamageAmount)} DAMAGE";
+        GUI.Label(new Rect(Screen.width * 0.5f - 100f, Screen.height * 0.5f + 24f, 200f, 28f), label, damage);
     }
 
     private static void DrawSniperScope()

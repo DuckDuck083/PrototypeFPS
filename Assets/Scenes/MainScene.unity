@@ -539,7 +539,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: -0.5, z: 0}
-  m_LocalScale: {x: 80, y: 1, z: 80}
+  m_LocalScale: {x: 120, y: 1, z: 120}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -621,7 +621,7 @@ MonoBehaviour:
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   cameraTransform: {fileID: 330585546}
   walkSpeed: 5
-  sprintSpeed: 8
+  sprintSpeed: 10
   crouchSpeed: 2.5
   jumpHeight: 1.2
   gravity: -20
@@ -653,7 +653,6 @@ MonoBehaviour:
   handgunReserveAmmo: 48
   sniperMagazineSize: 5
   sniperReserveAmmo: 20
-  reloadTime: 1.4
   range: 100
   hitForce: 8
 --- !u!114 &1200000006
