@@ -647,9 +647,10 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   playerCamera: {fileID: 330585545}
-  magazineSize: 30
-  reserveAmmo: 90
-  secondsBetweenShots: 0.12
+  rifleMagazineSize: 30
+  rifleReserveAmmo: 90
+  handgunMagazineSize: 12
+  handgunReserveAmmo: 48
   reloadTime: 1.4
   range: 100
   hitForce: 8

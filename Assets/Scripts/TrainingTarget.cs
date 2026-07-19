@@ -74,8 +74,19 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             dead = true;
             respawnTime = Time.time + respawnDelay;
             controller.enabled = false;
+            RemoveBulletHoles();
             foreach (Renderer targetRenderer in renderers)
                 targetRenderer.enabled = false;
+        }
+    }
+
+    private void RemoveBulletHoles()
+    {
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+        foreach (Transform child in children)
+        {
+            if (child != transform && child.name == "Bullet Hole")
+                Destroy(child.gameObject);
         }
     }
 
