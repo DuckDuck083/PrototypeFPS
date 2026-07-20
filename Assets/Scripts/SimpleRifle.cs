@@ -73,11 +73,13 @@ public sealed class SimpleRifle : MonoBehaviour
     private const float GrenadeFuseTime = 2.2f;
     private const int MaximumRocketReserve = 12;
     private const int MaximumGrenades = 8;
+    private float nextDashTime;
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (currentWeapon == WeaponType.Sniper ? sniperScopeToggled : aimAction.IsPressed());
     public bool IsShieldBlocking => currentSlot == 1 && slotSelections[1] == 0
         && attackAction.IsPressed()
         && !isReloading;
+    public float MovementMultiplier => currentSlot == 0 && slotSelections[0] == 3 && attackAction.IsPressed() ? 0.62f : 1f;
     private int CurrentAmmo => currentWeapon == WeaponType.Rifle ? rifleAmmo : currentWeapon == WeaponType.Handgun ? handgunAmmo : sniperAmmo;
     private int CurrentReserve => currentWeapon == WeaponType.Rifle ? rifleReserveAmmo : currentWeapon == WeaponType.Handgun ? handgunReserveAmmo : sniperReserveAmmo;
     private int CurrentMagazineSize => currentWeapon == WeaponType.Rifle ? rifleMagazineSize : currentWeapon == WeaponType.Handgun ? handgunMagazineSize : sniperMagazineSize;
@@ -142,6 +144,9 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void Update()
     {
+        if (currentSlot == 2 && slotSelections[2] == 3 && aimAction.WasPressedThisFrame() && Time.time >= nextDashTime)
+            ScytheDash();
+
         if (currentSlot == 3 && slotSelections[3] == 0 && !isReloading && aimAction.WasPressedThisFrame())
             sniperScopeToggled = !sniperScopeToggled;
 
@@ -278,13 +283,13 @@ public sealed class SimpleRifle : MonoBehaviour
         {
             if (option == 0 && attackAction.IsPressed()) FireHitscan(24f, 0.12f, 1, 0.002f, false);
             else if (option == 1 && attackAction.WasPressedThisFrame()) LaunchRocket();
-            else if (option == 2 && attackAction.WasPressedThisFrame()) FireHitscan(11f, 0.72f, 8, 0.055f, false);
+            else if (option == 2 && attackAction.WasPressedThisFrame()) FireHitscan(11f, 0.72f, 8, 0.07f, false);
             else if (option == 3 && attackAction.IsPressed()) FireHitscan(10f, 0.065f, 1, 0.018f, false);
         }
         else if (currentSlot == 1)
         {
             if (option == 1 && attackAction.WasPressedThisFrame()) FireHitscan(22f, 0.24f, 1, 0.008f, false);
-            else if (option == 2 && attackAction.WasPressedThisFrame()) FireHitscan(48f, 0.48f, 1, 0.004f, false);
+            else if (option == 2 && attackAction.WasPressedThisFrame()) FireHitscan(48f, 0.48f, 1, 0.004f, true, 0.18f, true);
             else if (option == 3 && attackAction.WasPressedThisFrame())
             {
                 if (handgunAmmo > 0 && GetComponent<PlayerVitals>().Heal(35f))
@@ -296,9 +301,9 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         else if (currentSlot == 2 && attackAction.IsPressed())
         {
-            float[] damages = { 45f, 25f, 60f, 85f };
+            float[] damages = { 45f, 38f, 60f, 85f };
             float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f };
-            SwingMelee(damages[option], delays[option], option == 3 ? 3.2f : 2.4f);
+            SwingMelee(damages[option], delays[option], option == 3 ? 3.2f : 2.4f, option == 2 ? 0.22f : 0f);
         }
         else if (currentSlot == 3)
         {
@@ -309,7 +314,7 @@ public sealed class SimpleRifle : MonoBehaviour
         }
     }
 
-    private void FireHitscan(float damage, float delay, int pellets, float spread, bool sniperHeadshots)
+    private void FireHitscan(float damage, float delay, int pellets, float spread, bool headshotCriticals, float miniCritChance = 0f, bool miniCrits = false)
     {
         if (CurrentAmmo <= 0) { TryReload(); return; }
         SetCurrentAmmo(CurrentAmmo - 1);
@@ -320,19 +325,34 @@ public sealed class SimpleRifle : MonoBehaviour
             Vector3 direction = playerCamera.transform.forward
                 + playerCamera.transform.right * Random.Range(-spread, spread)
                 + playerCamera.transform.up * Random.Range(-spread, spread);
-            if (!Physics.Raycast(playerCamera.transform.position, direction.normalized, out RaycastHit hit, range, ~0, QueryTriggerInteraction.Ignore)) continue;
+            Vector3 tracerEnd = playerCamera.transform.position + direction.normalized * range;
+            if (!Physics.Raycast(playerCamera.transform.position, direction.normalized, out RaycastHit hit, range, ~0, QueryTriggerInteraction.Ignore))
+            {
+                CreateTracer(tracerEnd);
+                continue;
+            }
+            tracerEnd = hit.point;
+            CreateTracer(tracerEnd);
             IDamageable target = hit.collider.GetComponentInParent<IDamageable>();
             if (target == null) continue;
-            bool critical = sniperHeadshots && hit.collider.gameObject.name == "Head";
-            float dealt = critical ? damage * 3f : damage;
+            bool critical = headshotCriticals && hit.collider.gameObject.name == "Head";
+            bool miniCritical = !critical && miniCrits && Random.value < miniCritChance;
+            float dealt = critical ? damage * 3f : miniCritical ? damage * 1.35f : damage;
             target.TakeDamage(dealt);
             lastDamageAmount = dealt;
-            lastHitWasCritical = critical;
+            lastHitWasCritical = critical || miniCritical;
             registeredHit = true;
         }
         if (registeredHit) hitMarkerUntil = Time.time + 0.35f;
         gunshotAudio.pitch = Random.Range(0.92f, 1.08f);
         gunshotAudio.PlayOneShot(gunshotClip, 0.65f);
+    }
+
+    private void ScytheDash()
+    {
+        CharacterController controller = GetComponent<CharacterController>();
+        controller.Move(transform.forward * 5.5f);
+        nextDashTime = Time.time + 2.2f;
     }
 
     private void ThrowSmokeGrenade()
@@ -341,14 +361,13 @@ public sealed class SimpleRifle : MonoBehaviour
         sniperAmmo--;
         nextShotTime = Time.time + 1f;
         GameObject smoke = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        smoke.name = "Smoke Cloud";
-        smoke.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 8f;
-        smoke.transform.localScale = Vector3.one * 9f;
-        Destroy(smoke.GetComponent<Collider>());
-        Material material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        material.color = new Color(0.3f, 0.34f, 0.38f);
-        smoke.GetComponent<Renderer>().material = material;
-        Destroy(smoke, 8f);
+        smoke.name = "Smoke Grenade";
+        smoke.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 0.8f;
+        smoke.transform.localScale = Vector3.one * 0.25f;
+        Rigidbody body = smoke.AddComponent<Rigidbody>();
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.linearVelocity = playerCamera.transform.forward * 12f + Vector3.up * 3.2f;
+        smoke.AddComponent<SmokeGrenade>();
     }
 
     private void PlaceMine()
@@ -573,7 +592,7 @@ public sealed class SimpleRifle : MonoBehaviour
             TryReload();
     }
 
-    private void SwingMelee(float meleeDamage = 45f, float meleeDelay = 0.65f, float meleeRange = 2.4f)
+    private void SwingMelee(float meleeDamage = 45f, float meleeDelay = 0.65f, float meleeRange = 2.4f, float randomCritChance = 0f)
     {
         nextShotTime = Time.time + meleeDelay;
         currentModel.localRotation = Quaternion.Euler(0f, 0f, -55f);
@@ -582,18 +601,18 @@ public sealed class SimpleRifle : MonoBehaviour
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         if (Physics.SphereCast(ray, 0.35f, out RaycastHit hit, meleeRange, ~0, QueryTriggerInteraction.Ignore))
         {
-            ApplyDamage(hit, meleeDamage);
+            ApplyDamage(hit, meleeDamage, false, randomCritChance);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
     }
 
-    private void ApplyDamage(RaycastHit hit, float baseDamage, bool allowHeadshotCritical = false)
+    private void ApplyDamage(RaycastHit hit, float baseDamage, bool allowHeadshotCritical = false, float randomCritChance = 0f)
     {
         IDamageable damageable = hit.collider.GetComponentInParent<IDamageable>();
         if (damageable == null)
             return;
 
-        bool critical = allowHeadshotCritical && hit.collider.gameObject.name == "Head";
+        bool critical = (allowHeadshotCritical && hit.collider.gameObject.name == "Head") || Random.value < randomCritChance;
         float finalDamage = critical ? baseDamage * 3f : baseDamage;
         damageable.TakeDamage(finalDamage);
 
@@ -618,11 +637,24 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public bool AddReserveAmmo(int rifleRounds, int handgunRounds, int sniperRounds)
     {
-        int oldRockets = rifleReserveAmmo;
-        int oldGrenades = sniperAmmo;
-        rifleReserveAmmo = Mathf.Min(MaximumRocketReserve, rifleReserveAmmo + rifleRounds);
-        sniperAmmo = Mathf.Min(MaximumGrenades, sniperAmmo + sniperRounds);
-        return rifleReserveAmmo > oldRockets || sniperAmmo > oldGrenades;
+        int oldPrimary = rifleReserveAmmo;
+        int oldSecondary = handgunReserveAmmo;
+        int oldSpecial = sniperAmmo + sniperReserveAmmo;
+        int[] primaryAdds = { 30, 2, 8, 100 };
+        int[] primaryCaps = { 180, 12, 64, 400 };
+        rifleReserveAmmo = Mathf.Min(primaryCaps[slotSelections[0]], rifleReserveAmmo + primaryAdds[slotSelections[0]]);
+
+        if (slotSelections[1] == 1) handgunReserveAmmo = Mathf.Min(96, handgunReserveAmmo + 12);
+        else if (slotSelections[1] == 2) handgunReserveAmmo = Mathf.Min(60, handgunReserveAmmo + 6);
+
+        if (slotSelections[3] == 0) sniperReserveAmmo = Mathf.Min(40, sniperReserveAmmo + 5);
+        else
+        {
+            int[] specialistAdds = { 0, 2, 2, 1 };
+            sniperAmmo = Mathf.Min(MaximumGrenades, sniperAmmo + specialistAdds[slotSelections[3]]);
+        }
+
+        return rifleReserveAmmo > oldPrimary || handgunReserveAmmo > oldSecondary || sniperAmmo + sniperReserveAmmo > oldSpecial;
     }
 
     private void TryReload()
@@ -791,7 +823,8 @@ public sealed class SimpleRifle : MonoBehaviour
         centered.normal.textColor = Color.white;
         GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
         string weaponName = SlotWeaponNames[currentSlot][slotSelections[currentSlot]];
-        string ammoText = currentWeapon == WeaponType.Melee || currentWeapon == WeaponType.Handgun ? weaponName
+        bool hidesAmmo = currentSlot == 2 || (currentSlot == 1 && (slotSelections[1] == 0 || slotSelections[1] == 3));
+        string ammoText = hidesAmmo ? weaponName
             : currentWeapon == WeaponType.Sniper ? $"{weaponName}  {sniperAmmo}"
             : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
         GUI.color = new Color(0f, 0f, 0f, 0.65f);

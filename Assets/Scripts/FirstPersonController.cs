@@ -92,7 +92,8 @@ public sealed class FirstPersonController : MonoBehaviour
 
         bool wantsToSprint = !isCrouching && input.sqrMagnitude > 0.01f && sprintAction.IsPressed();
         bool isSprinting = wantsToSprint && (playerVitals == null || playerVitals.UseSprintStamina());
-        float speed = isCrouching ? crouchSpeed : isSprinting ? sprintSpeed : walkSpeed;
+        float weaponMovementMultiplier = GetComponent<SimpleRifle>() != null ? GetComponent<SimpleRifle>().MovementMultiplier : 1f;
+        float speed = (isCrouching ? crouchSpeed : isSprinting ? sprintSpeed : walkSpeed) * weaponMovementMultiplier;
 
         if (characterController.isGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;
