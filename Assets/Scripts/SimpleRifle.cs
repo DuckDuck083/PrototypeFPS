@@ -637,9 +637,7 @@ public sealed class SimpleRifle : MonoBehaviour
         body.linearVelocity = playerCamera.transform.forward * 18f + Vector3.up * 1.8f;
         body.mass = 0.65f;
         Collider grenadeCollider = grenade.GetComponent<Collider>();
-        Collider playerCollider = GetComponent<Collider>();
-        if (playerCollider != null) Physics.IgnoreCollision(grenadeCollider, playerCollider);
-        PhysicMaterial bounce = new PhysicMaterial("Grenade Bounce") { bounciness = 0.68f, dynamicFriction = 0.25f, staticFriction = 0.25f, bounceCombine = PhysicMaterialCombine.Maximum };
+        PhysicsMaterial bounce = new PhysicsMaterial("Grenade Bounce") { bounciness = 0.68f, dynamicFriction = 0.25f, staticFriction = 0.25f, bounceCombine = PhysicsMaterialCombine.Maximum };
         grenadeCollider.material = bounce;
         ExplosiveProjectile explosive = grenade.AddComponent<ExplosiveProjectile>();
         explosive.Configure(95f, 4.5f, 3.2f, false, this, false, true);
@@ -659,8 +657,6 @@ public sealed class SimpleRifle : MonoBehaviour
         Rigidbody body = sticky.AddComponent<Rigidbody>();
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         body.linearVelocity = playerCamera.transform.forward * 15f + Vector3.up * 1.5f;
-        Collider playerCollider = GetComponent<Collider>();
-        if (playerCollider != null) Physics.IgnoreCollision(sticky.GetComponent<Collider>(), playerCollider);
         ExplosiveProjectile explosive = sticky.AddComponent<ExplosiveProjectile>();
         explosive.Configure(105f, 4.8f, 45f, false, this, false, false, true);
         activeStickies.RemoveAll(item => item == null);
