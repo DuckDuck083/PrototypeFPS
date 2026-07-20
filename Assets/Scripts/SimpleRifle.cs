@@ -19,8 +19,8 @@ public sealed class SimpleRifle : MonoBehaviour
     [SerializeField, Min(0)] private int handgunReserveAmmo = 48;
 
     [Header("Sniper")]
-    [SerializeField, Min(1)] private int sniperMagazineSize = 5;
-    [SerializeField, Min(0)] private int sniperReserveAmmo = 20;
+    [SerializeField, Min(1)] private int sniperMagazineSize = 1;
+    [SerializeField, Min(0)] private int sniperReserveAmmo = 24;
 
     [Header("Shared")]
     [SerializeField, Min(1f)] private float range = 100f;
@@ -60,7 +60,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private float nextShotTime;
     private float normalFieldOfView;
     private float sniperCharge;
-    private const float MaximumSniperChargeTime = 1.5f;
+    private const float MaximumSniperChargeTime = 2.6f;
     private float reloadProgress;
     private float hitMarkerUntil;
     private float lastDamageAmount;
@@ -77,9 +77,9 @@ public sealed class SimpleRifle : MonoBehaviour
     private float recoilPitch;
     private float recoilYaw;
     private static Texture2D scopeMaskTexture;
-    private const float FalloffStart = 14f;
-    private const float FalloffEnd = 70f;
-    private const float MinimumFalloffMultiplier = 0.42f;
+    private const float FalloffStart = 9f;
+    private const float FalloffEnd = 58f;
+    private const float MinimumFalloffMultiplier = 0.35f;
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (currentWeapon == WeaponType.Sniper ? sniperScopeToggled : aimAction.IsPressed());
     public bool IsShieldBlocking => currentSlot == 1 && slotSelections[1] == 0
@@ -199,10 +199,10 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         else if (slotIndex == 3)
         {
-            int[] ammunition = { 5, 4, 3, 2 };
+            int[] ammunition = { 1, 4, 3, 2 };
             sniperMagazineSize = ammunition[weaponIndex];
             sniperAmmo = ammunition[weaponIndex];
-            sniperReserveAmmo = weaponIndex == 0 ? 20 : 0;
+            sniperReserveAmmo = weaponIndex == 0 ? 24 : 0;
         }
     }
 
@@ -388,6 +388,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (CurrentAmmo <= 0) { TryReload(); return; }
         SetCurrentAmmo(CurrentAmmo - 1);
         nextShotTime = Time.time + delay;
+        damage *= Random.Range(0.94f, 1.07f);
         bool registeredHit = false;
         for (int i = 0; i < pellets; i++)
         {
@@ -651,6 +652,7 @@ public sealed class SimpleRifle : MonoBehaviour
         bool aimedShot = IsAiming;
         float baseDelay = currentWeapon == WeaponType.Rifle ? 0.12f : currentWeapon == WeaponType.Handgun ? 0.28f : 1.1f;
         float damage = currentWeapon == WeaponType.Rifle ? 25f : currentWeapon == WeaponType.Handgun ? 18f : Mathf.Lerp(70f, 160f, sniperChargeRatio);
+        damage *= Random.Range(0.94f, 1.07f);
         if (aimedShot)
         {
             baseDelay *= 0.78f;
@@ -738,7 +740,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (slotSelections[1] == 1) handgunReserveAmmo = Mathf.Min(96, handgunReserveAmmo + 12);
         else if (slotSelections[1] == 2) handgunReserveAmmo = Mathf.Min(60, handgunReserveAmmo + 6);
 
-        if (slotSelections[3] == 0) sniperReserveAmmo = Mathf.Min(40, sniperReserveAmmo + 5);
+        if (slotSelections[3] == 0) sniperReserveAmmo = Mathf.Min(24, sniperReserveAmmo + 5);
         else
         {
             int[] specialistAdds = { 0, 2, 2, 1 };
@@ -752,13 +754,13 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         int[] primaryReserves = { 90, 12, 32, 200 };
         int[] secondaryReserves = { 0, 48, 30, 0 };
-        int[] specialistAmmo = { 5, 4, 3, 2 };
+        int[] specialistAmmo = { 1, 4, 3, 2 };
         rifleAmmo = rifleMagazineSize;
         rifleReserveAmmo = primaryReserves[slotSelections[0]];
         handgunAmmo = slotSelections[1] == 0 ? 0 : handgunMagazineSize;
         handgunReserveAmmo = secondaryReserves[slotSelections[1]];
         sniperAmmo = specialistAmmo[slotSelections[3]];
-        sniperReserveAmmo = slotSelections[3] == 0 ? 20 : 0;
+        sniperReserveAmmo = slotSelections[3] == 0 ? 24 : 0;
         isReloading = false;
         reloadProgress = 0f;
     }
@@ -941,7 +943,7 @@ public sealed class SimpleRifle : MonoBehaviour
         string weaponName = SlotWeaponNames[currentSlot][slotSelections[currentSlot]];
         bool hidesAmmo = currentSlot == 2 || (currentSlot == 1 && (slotSelections[1] == 0 || slotSelections[1] == 3));
         string ammoText = hidesAmmo ? weaponName
-            : currentWeapon == WeaponType.Sniper ? $"{weaponName}  {sniperAmmo}"
+            : currentWeapon == WeaponType.Sniper && slotSelections[3] != 0 ? $"{weaponName}  {sniperAmmo}"
             : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
         GUI.color = new Color(0f, 0f, 0f, 0.65f);
         GUI.DrawTexture(new Rect(Screen.width - 300f, Screen.height - 92f, 275f, 65f), Texture2D.whiteTexture);

@@ -652,8 +652,8 @@ MonoBehaviour:
   rifleReserveAmmo: 90
   handgunMagazineSize: 1
   handgunReserveAmmo: 0
-  sniperMagazineSize: 5
-  sniperReserveAmmo: 20
+  sniperMagazineSize: 1
+  sniperReserveAmmo: 24
   range: 100
   hitForce: 8
 --- !u!114 &1200000006
