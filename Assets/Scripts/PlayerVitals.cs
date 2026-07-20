@@ -15,6 +15,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     private float lastStaminaUseTime;
     private float damageFlash;
     private float invulnerableUntil;
+    private float respawnAt;
+    private bool isDead;
     private Vector3 spawnPosition;
 
     private void Awake()
@@ -26,6 +28,13 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
     private void Update()
     {
+        if (isDead)
+        {
+            if (Time.time >= respawnAt)
+                RespawnPlayer();
+            return;
+        }
+
         if (Time.time >= lastStaminaUseTime + recoveryDelay)
             Stamina = Mathf.MoveTowards(Stamina, maximumStamina, staminaRecoveryPerSecond * Time.deltaTime);
 
@@ -44,7 +53,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
     public void TakeDamage(float amount)
     {
-        if (Time.time < invulnerableUntil)
+        if (isDead || Time.time < invulnerableUntil)
             return;
 
         SimpleRifle weapons = GetComponent<SimpleRifle>();
@@ -54,7 +63,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         Health = Mathf.Max(0f, Health - amount);
         damageFlash = Mathf.Clamp01(damageFlash + amount / 35f);
         if (Health <= 0f)
-            RespawnPlayer();
+            BeginRespawn();
     }
 
     public bool Heal(float amount)
@@ -66,6 +75,14 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         return true;
     }
 
+    private void BeginRespawn()
+    {
+        isDead = true;
+        respawnAt = Time.time + 5f;
+        GetComponent<FirstPersonController>().enabled = false;
+        GetComponent<SimpleRifle>().enabled = false;
+    }
+
     private void RespawnPlayer()
     {
         CharacterController controller = GetComponent<CharacterController>();
@@ -74,15 +91,31 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         controller.enabled = true;
         Health = maximumHealth;
         Stamina = maximumStamina;
+        isDead = false;
         invulnerableUntil = Time.time + 3f;
 
         TrainingTarget[] targets = FindObjectsByType<TrainingTarget>();
         foreach (TrainingTarget target in targets)
             target.ResetToSpawn();
+
+        GetComponent<FirstPersonController>().enabled = true;
+        GetComponent<SimpleRifle>().enabled = true;
     }
 
     private void OnGUI()
     {
+        if (isDead)
+        {
+            GUI.color = new Color(0f, 0f, 0f, 0.78f);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUIStyle respawnStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 34, fontStyle = FontStyle.Bold };
+            respawnStyle.normal.textColor = new Color(0.85f, 0.9f, 1f);
+            float remaining = Mathf.Max(0f, respawnAt - Time.time);
+            GUI.Label(new Rect(Screen.width * 0.5f - 250f, Screen.height * 0.5f - 50f, 500f, 100f), $"RESPAWNING IN {Mathf.CeilToInt(remaining)}", respawnStyle);
+            return;
+        }
+
         if (damageFlash > 0f)
         {
             GUI.color = new Color(0.75f, 0f, 0f, damageFlash * 0.22f);

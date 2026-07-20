@@ -81,20 +81,27 @@ public sealed class GameMenu : MonoBehaviour
     private void DrawLoadout()
     {
         GUI.Label(new Rect(Screen.width * 0.5f - 250f, 155f, 500f, 38f), "ACTIVE LOADOUT", CenteredStyle(26));
-        float totalWidth = 700f;
-        float startX = Screen.width * 0.5f - totalWidth * 0.5f;
-        for (int i = 0; i < 4; i++)
+        string[] weaponNames = { "ROCKET", "SHIELD", "BATON", "GRENADE" };
+        float startX = Screen.width * 0.5f - 310f;
+        float startY = 215f;
+
+        for (int slot = 0; slot < 4; slot++)
         {
-            Rect card = new Rect(startX + i * 175f, 230f, 160f, 115f);
-            GUI.color = new Color(0.08f, 0.13f, 0.18f, 1f);
-            GUI.DrawTexture(card, Texture2D.whiteTexture);
+            GUI.Label(new Rect(startX, startY + slot * 58f, 90f, 42f), $"SLOT {slot + 1}", CenteredStyle(17));
+            for (int weapon = 0; weapon < 4; weapon++)
+            {
+                bool selected = weapons.IsLoadoutSelection(slot, weapon);
+                GUI.backgroundColor = selected ? new Color(0.15f, 0.7f, 1f) : new Color(0.2f, 0.25f, 0.3f);
+                Rect button = new Rect(startX + 100f + weapon * 130f, startY + slot * 58f, 120f, 42f);
+                if (GUI.Button(button, selected ? $"✓ {weaponNames[weapon]}" : weaponNames[weapon]))
+                    weapons.SetLoadoutSlot(slot, weapon);
+            }
+            GUI.backgroundColor = Color.white;
             GUI.color = Color.white;
-            if (GUI.Button(card, $"SLOT {i + 1}\n{weapons.GetLoadoutSlotName(i)}\n\nCLICK TO CHANGE"))
-                weapons.CycleLoadoutSlot(i);
         }
 
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, 370f, 600f, 30f), "Assign any available weapon to any slot. Duplicate weapons are allowed.", CenteredStyle(15));
-        if (GUI.Button(new Rect(Screen.width * 0.5f - 120f, 420f, 240f, 45f), "BACK")) loadoutOpen = false;
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, 465f, 600f, 30f), "Click a weapon in each row. Blue buttons are equipped. Duplicates are allowed.", CenteredStyle(15));
+        if (GUI.Button(new Rect(Screen.width * 0.5f - 120f, 510f, 240f, 45f), "BACK")) loadoutOpen = false;
     }
 
     private static GUIStyle CenteredStyle(int size)

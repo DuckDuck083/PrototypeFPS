@@ -11,7 +11,7 @@ public sealed class SimpleRifle : MonoBehaviour
     [SerializeField] private Camera playerCamera;
 
     [Header("Rifle")]
-    [SerializeField, Min(1)] private int rifleMagazineSize = 30;
+    [SerializeField, Min(1)] private int rifleMagazineSize = 4;
     [SerializeField, Min(0)] private int rifleReserveAmmo = 90;
 
     [Header("Handgun")]
@@ -65,6 +65,11 @@ public sealed class SimpleRifle : MonoBehaviour
     private bool isReloading;
     private bool isChargingSniper;
     private bool sniperScopeToggled;
+    private bool isPrimingGrenade;
+    private float grenadePrimeTime;
+    private const float GrenadeFuseTime = 2.2f;
+    private const int MaximumRocketReserve = 12;
+    private const int MaximumGrenades = 8;
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (currentWeapon == WeaponType.Sniper ? sniperScopeToggled : aimAction.IsPressed());
     public bool IsShieldBlocking => currentWeapon == WeaponType.Handgun
@@ -116,6 +121,8 @@ public sealed class SimpleRifle : MonoBehaviour
         sniperSelectAction.Disable();
         StopAllCoroutines();
         isReloading = false;
+        isPrimingGrenade = false;
+        grenadePrimeTime = 0f;
         if (playerCamera != null)
             playerCamera.fieldOfView = normalFieldOfView;
     }
@@ -146,7 +153,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (!isReloading && Time.time >= nextShotTime)
         {
             if (currentWeapon == WeaponType.Rifle && attackAction.WasPressedThisFrame()) LaunchRocket();
-            else if (currentWeapon == WeaponType.Sniper && attackAction.WasPressedThisFrame()) ThrowGrenade();
+            else if (currentWeapon == WeaponType.Sniper) UpdateGrenadePriming();
             else if (currentWeapon == WeaponType.Melee && attackAction.IsPressed()) Shoot();
         }
 
@@ -160,6 +167,19 @@ public sealed class SimpleRifle : MonoBehaviour
 
         int nextWeapon = ((int)slotWeapons[slotIndex] + 1) % 4;
         slotWeapons[slotIndex] = (WeaponType)nextWeapon;
+    }
+
+    public void SetLoadoutSlot(int slotIndex, int weaponIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= slotWeapons.Length || weaponIndex < 0 || weaponIndex > 3)
+            return;
+
+        slotWeapons[slotIndex] = (WeaponType)weaponIndex;
+    }
+
+    public bool IsLoadoutSelection(int slotIndex, int weaponIndex)
+    {
+        return slotIndex >= 0 && slotIndex < slotWeapons.Length && (int)slotWeapons[slotIndex] == weaponIndex;
     }
 
     public void EquipLoadoutSlot(int slotIndex)
@@ -212,6 +232,8 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void SelectWeapon(WeaponType weapon)
     {
+        isPrimingGrenade = false;
+        grenadePrimeTime = 0f;
         isChargingSniper = false;
         sniperCharge = 0f;
         sniperScopeToggled = false;
@@ -233,6 +255,14 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         if (isReloading)
             return;
+
+        if (isPrimingGrenade)
+        {
+            float primeMotion = Mathf.Clamp01(grenadePrimeTime / 0.45f);
+            currentModel.localPosition = Vector3.Lerp(currentRestPosition, currentRestPosition + new Vector3(-0.18f, 0.12f, 0.18f), primeMotion);
+            currentModel.localRotation = Quaternion.Euler(-20f * primeMotion, 0f, -35f * primeMotion);
+            return;
+        }
 
         Vector3 shieldRaisedPosition = new Vector3(0f, -0.08f, 0.38f);
         Vector3 targetPosition = IsShieldBlocking ? shieldRaisedPosition : currentRestPosition;
@@ -286,7 +316,31 @@ public sealed class SimpleRifle : MonoBehaviour
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         body.linearVelocity = playerCamera.transform.forward * 13f + Vector3.up * 3.5f;
         ExplosiveProjectile explosive = grenade.AddComponent<ExplosiveProjectile>();
-        explosive.Configure(90f, 4.5f, 2.2f, false, this);
+        float remainingFuse = Mathf.Max(0.35f, GrenadeFuseTime - grenadePrimeTime);
+        explosive.Configure(90f, 4.5f, remainingFuse, false, this);
+        isPrimingGrenade = false;
+        grenadePrimeTime = 0f;
+    }
+
+    private void UpdateGrenadePriming()
+    {
+        if (sniperAmmo <= 0)
+            return;
+
+        if (attackAction.WasPressedThisFrame())
+        {
+            isPrimingGrenade = true;
+            grenadePrimeTime = 0f;
+        }
+
+        if (!isPrimingGrenade)
+            return;
+
+        if (attackAction.IsPressed())
+            grenadePrimeTime = Mathf.Min(1.85f, grenadePrimeTime + Time.deltaTime);
+
+        if (attackAction.WasReleasedThisFrame())
+            ThrowGrenade();
     }
 
     public void ReportExplosiveHit(float totalDamage)
@@ -393,11 +447,13 @@ public sealed class SimpleRifle : MonoBehaviour
         else sniperReserveAmmo = amount;
     }
 
-    public void AddReserveAmmo(int rifleRounds, int handgunRounds, int sniperRounds)
+    public bool AddReserveAmmo(int rifleRounds, int handgunRounds, int sniperRounds)
     {
-        rifleReserveAmmo += rifleRounds;
-        handgunReserveAmmo += handgunRounds;
-        sniperReserveAmmo += sniperRounds;
+        int oldRockets = rifleReserveAmmo;
+        int oldGrenades = sniperAmmo;
+        rifleReserveAmmo = Mathf.Min(MaximumRocketReserve, rifleReserveAmmo + rifleRounds);
+        sniperAmmo = Mathf.Min(MaximumGrenades, sniperAmmo + sniperRounds);
+        return rifleReserveAmmo > oldRockets || sniperAmmo > oldGrenades;
     }
 
     private void TryReload()
@@ -563,7 +619,9 @@ public sealed class SimpleRifle : MonoBehaviour
         centered.normal.textColor = Color.white;
         GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
         string weaponName = GetWeaponName(currentWeapon);
-        string ammoText = currentWeapon == WeaponType.Melee || currentWeapon == WeaponType.Handgun ? weaponName : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
+        string ammoText = currentWeapon == WeaponType.Melee || currentWeapon == WeaponType.Handgun ? weaponName
+            : currentWeapon == WeaponType.Sniper ? $"{weaponName}  {sniperAmmo}"
+            : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
         GUI.color = new Color(0f, 0f, 0f, 0.65f);
         GUI.DrawTexture(new Rect(Screen.width - 300f, Screen.height - 92f, 275f, 65f), Texture2D.whiteTexture);
         GUI.color = Color.white;
@@ -595,6 +653,14 @@ public sealed class SimpleRifle : MonoBehaviour
             GUI.DrawTexture(new Rect(bar.x + 2f, bar.y + 2f, (bar.width - 4f) * fill, bar.height - 4f), Texture2D.whiteTexture);
             GUI.color = Color.white;
             GUI.Label(new Rect(bar.x, bar.y - 22f, bar.width, 20f), "SNIPER CHARGE", help);
+        }
+
+        if (isPrimingGrenade)
+        {
+            float primeRatio = grenadePrimeTime / 1.85f;
+            GUIStyle primeStyle = new GUIStyle(help) { fontSize = 15, fontStyle = FontStyle.Bold };
+            primeStyle.normal.textColor = Color.Lerp(Color.white, new Color(1f, 0.25f, 0.08f), primeRatio);
+            GUI.Label(new Rect(Screen.width * 0.5f - 150f, Screen.height - 120f, 300f, 26f), $"PRIMING  {grenadePrimeTime:0.0}s", primeStyle);
         }
     }
 
