@@ -60,6 +60,9 @@ public sealed class SimpleRifle : MonoBehaviour
     private bool sniperScopeToggled;
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (currentWeapon == WeaponType.Sniper ? sniperScopeToggled : aimAction.IsPressed());
+    public bool IsShieldBlocking => currentWeapon == WeaponType.Handgun
+        && attackAction.IsPressed()
+        && !isReloading;
     private int CurrentAmmo => currentWeapon == WeaponType.Rifle ? rifleAmmo : currentWeapon == WeaponType.Handgun ? handgunAmmo : sniperAmmo;
     private int CurrentReserve => currentWeapon == WeaponType.Rifle ? rifleReserveAmmo : currentWeapon == WeaponType.Handgun ? handgunReserveAmmo : sniperReserveAmmo;
     private int CurrentMagazineSize => currentWeapon == WeaponType.Rifle ? rifleMagazineSize : currentWeapon == WeaponType.Handgun ? handgunMagazineSize : sniperMagazineSize;
@@ -122,9 +125,6 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void Update()
     {
-        if (currentWeapon == WeaponType.Sniper && !isReloading && aimAction.WasPressedThisFrame())
-            sniperScopeToggled = !sniperScopeToggled;
-
         if (!isReloading)
         {
             if (rifleSelectAction.WasPressedThisFrame()) SelectWeapon(WeaponType.Rifle);
@@ -136,10 +136,12 @@ public sealed class SimpleRifle : MonoBehaviour
         if (reloadAction.WasPressedThisFrame())
             TryReload();
 
-        if (!isReloading && currentWeapon == WeaponType.Sniper)
-            UpdateSniperCharge();
-        else if (!isReloading && attackAction.IsPressed() && Time.time >= nextShotTime)
-            Shoot();
+        if (!isReloading && Time.time >= nextShotTime)
+        {
+            if (currentWeapon == WeaponType.Rifle && attackAction.WasPressedThisFrame()) LaunchRocket();
+            else if (currentWeapon == WeaponType.Sniper && attackAction.WasPressedThisFrame()) ThrowGrenade();
+            else if (currentWeapon == WeaponType.Melee && attackAction.IsPressed()) Shoot();
+        }
 
         UpdateAimingVisuals();
     }
@@ -194,15 +196,66 @@ public sealed class SimpleRifle : MonoBehaviour
         if (isReloading)
             return;
 
-        Vector3 aimedPosition = currentWeapon == WeaponType.Sniper ? new Vector3(0f, -0.14f, 0.52f)
-            : currentWeapon == WeaponType.Rifle ? new Vector3(0f, -0.13f, 0.48f)
-            : new Vector3(0f, -0.12f, 0.43f);
-        Vector3 targetPosition = IsAiming ? aimedPosition : currentRestPosition;
+        Vector3 shieldRaisedPosition = new Vector3(0f, -0.08f, 0.38f);
+        Vector3 targetPosition = IsShieldBlocking ? shieldRaisedPosition : currentRestPosition;
         currentModel.localPosition = Vector3.Lerp(currentModel.localPosition, targetPosition, 14f * Time.deltaTime);
         currentModel.localRotation = Quaternion.Slerp(currentModel.localRotation, Quaternion.identity, 18f * Time.deltaTime);
-        float aimedFov = currentWeapon == WeaponType.Sniper ? 25f : 48f;
-        playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, IsAiming ? aimedFov : normalFieldOfView, 12f * Time.deltaTime);
-        SetCurrentModelVisible(!(currentWeapon == WeaponType.Sniper && IsAiming));
+        playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, normalFieldOfView, 12f * Time.deltaTime);
+        SetCurrentModelVisible(true);
+    }
+
+    private void LaunchRocket()
+    {
+        if (rifleAmmo <= 0)
+        {
+            TryReload();
+            return;
+        }
+
+        rifleAmmo--;
+        nextShotTime = Time.time + 0.8f;
+        GameObject rocket = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        rocket.name = "Rocket";
+        rocket.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 1.2f;
+        rocket.transform.rotation = Quaternion.LookRotation(playerCamera.transform.forward) * Quaternion.Euler(90f, 0f, 0f);
+        rocket.transform.localScale = new Vector3(0.16f, 0.35f, 0.16f);
+        Rigidbody body = rocket.AddComponent<Rigidbody>();
+        body.useGravity = false;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.linearVelocity = playerCamera.transform.forward * 32f;
+        ExplosiveProjectile explosive = rocket.AddComponent<ExplosiveProjectile>();
+        explosive.Configure(110f, 5f, 5f, true, this);
+        gunshotAudio.pitch = 0.65f;
+        gunshotAudio.PlayOneShot(gunshotClip, 1f);
+        currentModel.localPosition += Vector3.back * 0.12f;
+
+        if (rifleAmmo == 0)
+            TryReload();
+    }
+
+    private void ThrowGrenade()
+    {
+        if (sniperAmmo <= 0)
+            return;
+
+        sniperAmmo--;
+        nextShotTime = Time.time + 0.55f;
+        GameObject grenade = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        grenade.name = "Grenade";
+        grenade.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 0.8f;
+        grenade.transform.localScale = Vector3.one * 0.28f;
+        Rigidbody body = grenade.AddComponent<Rigidbody>();
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.linearVelocity = playerCamera.transform.forward * 13f + Vector3.up * 3.5f;
+        ExplosiveProjectile explosive = grenade.AddComponent<ExplosiveProjectile>();
+        explosive.Configure(90f, 4.5f, 2.2f, false, this);
+    }
+
+    public void ReportExplosiveHit(float totalDamage)
+    {
+        lastDamageAmount = totalDamage;
+        lastHitWasCritical = false;
+        hitMarkerUntil = Time.time + 0.45f;
     }
 
     private void SetCurrentModelVisible(bool visible)
@@ -279,10 +332,8 @@ public sealed class SimpleRifle : MonoBehaviour
         if (damageable == null)
             return;
 
-        bool headshot = hit.collider.gameObject.name == "Head";
-        bool randomCritical = Random.value < 0.02f;
-        bool critical = headshot || randomCritical;
-        float finalDamage = critical ? baseDamage * 3f : baseDamage;
+        bool critical = false;
+        float finalDamage = baseDamage;
         damageable.TakeDamage(finalDamage);
 
         lastDamageAmount = finalDamage;
@@ -313,7 +364,7 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void TryReload()
     {
-        if (currentWeapon != WeaponType.Melee && !isReloading && CurrentAmmo < CurrentMagazineSize && CurrentReserve > 0)
+        if (currentWeapon == WeaponType.Rifle && !isReloading && CurrentAmmo < CurrentMagazineSize && CurrentReserve > 0)
             StartCoroutine(Reload());
     }
 
@@ -323,7 +374,7 @@ public sealed class SimpleRifle : MonoBehaviour
         sniperScopeToggled = false;
         SetCurrentModelVisible(true);
         playerCamera.fieldOfView = normalFieldOfView;
-        float reloadDuration = currentWeapon == WeaponType.Handgun ? 1.05f : currentWeapon == WeaponType.Sniper ? 2.15f : 1.55f;
+        float reloadDuration = 0.9f;
         float elapsed = 0f;
         while (elapsed < reloadDuration)
         {
@@ -350,30 +401,23 @@ public sealed class SimpleRifle : MonoBehaviour
         Material dark = CreateMaterial(new Color(0.08f, 0.09f, 0.1f));
         Material metal = CreateMaterial(new Color(0.2f, 0.22f, 0.24f));
 
-        rifleModel = CreateModelRoot("Simple Rifle");
-        AddPart(rifleModel, "Body", new Vector3(0f, 0f, 0.2f), new Vector3(0.16f, 0.16f, 0.55f), metal);
-        AddPart(rifleModel, "Barrel", new Vector3(0f, 0.02f, 0.62f), new Vector3(0.06f, 0.06f, 0.45f), dark);
-        AddPart(rifleModel, "Stock", new Vector3(0f, 0f, -0.17f), new Vector3(0.14f, 0.17f, 0.22f), dark);
-        AddPart(rifleModel, "Grip", new Vector3(0f, -0.16f, 0.08f), new Vector3(0.09f, 0.25f, 0.11f), dark, 12f);
-        AddPart(rifleModel, "Magazine", new Vector3(0f, -0.16f, 0.27f), new Vector3(0.11f, 0.24f, 0.14f), metal, -8f);
-        AddPart(rifleModel, "Sight", new Vector3(0f, 0.12f, 0.32f), new Vector3(0.07f, 0.07f, 0.12f), dark);
+        rifleModel = CreateModelRoot("Rocket Launcher");
+        AddPart(rifleModel, "Tube", new Vector3(0f, 0f, 0.35f), new Vector3(0.22f, 0.22f, 1.15f), metal);
+        AddPart(rifleModel, "Muzzle", new Vector3(0f, 0f, 0.96f), new Vector3(0.31f, 0.31f, 0.12f), dark);
+        AddPart(rifleModel, "Grip", new Vector3(0f, -0.2f, 0.2f), new Vector3(0.11f, 0.3f, 0.13f), dark, 8f);
+        AddPart(rifleModel, "Sight", new Vector3(0f, 0.16f, 0.36f), new Vector3(0.08f, 0.08f, 0.2f), dark);
 
-        handgunModel = CreateModelRoot("Simple Handgun");
-        AddPart(handgunModel, "Slide", new Vector3(0f, 0.02f, 0.2f), new Vector3(0.14f, 0.13f, 0.48f), metal);
-        AddPart(handgunModel, "Barrel", new Vector3(0f, 0.02f, 0.49f), new Vector3(0.055f, 0.055f, 0.17f), dark);
-        AddPart(handgunModel, "Grip", new Vector3(0f, -0.19f, 0.03f), new Vector3(0.13f, 0.32f, 0.15f), dark, 10f);
-        AddPart(handgunModel, "Sight", new Vector3(0f, 0.105f, 0.23f), new Vector3(0.045f, 0.045f, 0.08f), dark);
+        handgunModel = CreateModelRoot("Riot Shield");
+        AddPart(handgunModel, "Shield", new Vector3(0f, 0.05f, 0.2f), new Vector3(0.75f, 0.95f, 0.08f), metal);
+        AddPart(handgunModel, "Viewport", new Vector3(0f, 0.25f, 0.14f), new Vector3(0.38f, 0.16f, 0.04f), dark);
 
         meleeModel = CreateModelRoot("Training Baton");
         AddPart(meleeModel, "Handle", new Vector3(0f, -0.16f, 0.02f), new Vector3(0.1f, 0.32f, 0.1f), dark, 18f);
         AddPart(meleeModel, "Baton", new Vector3(0f, 0.18f, 0.18f), new Vector3(0.09f, 0.65f, 0.09f), metal, 35f);
 
-        sniperModel = CreateModelRoot("Simple Sniper Rifle");
-        AddPart(sniperModel, "Receiver", new Vector3(0f, 0f, 0.23f), new Vector3(0.17f, 0.17f, 0.65f), metal);
-        AddPart(sniperModel, "Long Barrel", new Vector3(0f, 0.01f, 0.88f), new Vector3(0.055f, 0.055f, 0.75f), dark);
-        AddPart(sniperModel, "Stock", new Vector3(0f, -0.02f, -0.25f), new Vector3(0.17f, 0.2f, 0.34f), dark);
-        AddPart(sniperModel, "Scope", new Vector3(0f, 0.15f, 0.3f), new Vector3(0.12f, 0.12f, 0.38f), dark);
-        AddPart(sniperModel, "Magazine", new Vector3(0f, -0.17f, 0.27f), new Vector3(0.12f, 0.24f, 0.16f), metal, -6f);
+        sniperModel = CreateModelRoot("Grenade");
+        AddPart(sniperModel, "Body", Vector3.zero, new Vector3(0.25f, 0.32f, 0.25f), metal);
+        AddPart(sniperModel, "Lever", new Vector3(0f, 0.2f, 0f), new Vector3(0.08f, 0.16f, 0.08f), dark);
     }
 
     private Transform CreateModelRoot(string modelName)
@@ -473,22 +517,18 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void OnGUI()
     {
-        if (currentWeapon == WeaponType.Sniper && IsAiming)
-            DrawSniperScope();
-
         GUIStyle centered = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
         centered.normal.textColor = Color.white;
-        if (!(currentWeapon == WeaponType.Sniper && IsAiming))
-            GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
-        string weaponName = currentWeapon == WeaponType.Rifle ? "RIFLE [1]" : currentWeapon == WeaponType.Handgun ? "HANDGUN [2]" : currentWeapon == WeaponType.Melee ? "BATON [3]" : "SNIPER [4]";
-        string ammoText = currentWeapon == WeaponType.Melee ? weaponName : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
+        GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
+        string weaponName = currentWeapon == WeaponType.Rifle ? "ROCKET LAUNCHER [1]" : currentWeapon == WeaponType.Handgun ? "RIOT SHIELD [2]" : currentWeapon == WeaponType.Melee ? "BATON [3]" : "GRENADES [4]";
+        string ammoText = currentWeapon == WeaponType.Melee || currentWeapon == WeaponType.Handgun ? weaponName : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
         GUI.color = new Color(0f, 0f, 0f, 0.65f);
         GUI.DrawTexture(new Rect(Screen.width - 300f, Screen.height - 92f, 275f, 65f), Texture2D.whiteTexture);
         GUI.color = Color.white;
         GUI.Label(new Rect(Screen.width - 290f, Screen.height - 84f, 255f, 40f), ammoText, centered);
         GUIStyle help = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = 13 };
         help.normal.textColor = new Color(0.75f, 0.82f, 0.88f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 250f, 12f, 500f, 28f), "[1] Rifle   [2] Handgun   [3] Baton   [4] Sniper    RMB Aim    R Reload", help);
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, 12f, 600f, 28f), "[1] Rocket Launcher   [2] Riot Shield   [3] Baton   [4] Grenade    R Reload", help);
 
         if (Time.time < hitMarkerUntil)
             DrawHitMarker(centered);

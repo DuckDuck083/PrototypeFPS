@@ -47,6 +47,10 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         if (Time.time < invulnerableUntil)
             return;
 
+        SimpleRifle weapons = GetComponent<SimpleRifle>();
+        if (weapons != null && weapons.IsShieldBlocking)
+            amount *= 0.2f;
+
         Health = Mathf.Max(0f, Health - amount);
         damageFlash = Mathf.Clamp01(damageFlash + amount / 35f);
         if (Health <= 0f)

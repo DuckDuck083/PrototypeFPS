@@ -1,0 +1,74 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+public sealed class ExplosiveProjectile : MonoBehaviour
+{
+    private float damage;
+    private float radius;
+    private float fuse;
+    private bool explodeOnImpact;
+    private SimpleRifle owner;
+    private bool exploded;
+
+    public void Configure(float explosionDamage, float explosionRadius, float fuseTime, bool impactExplosion, SimpleRifle weaponOwner)
+    {
+        damage = explosionDamage;
+        radius = explosionRadius;
+        fuse = fuseTime;
+        explodeOnImpact = impactExplosion;
+        owner = weaponOwner;
+    }
+
+    private void Update()
+    {
+        fuse -= Time.deltaTime;
+        if (fuse <= 0f)
+            Explode();
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (explodeOnImpact)
+            Explode();
+    }
+
+    private void Explode()
+    {
+        if (exploded)
+            return;
+
+        exploded = true;
+        Collider[] hits = Physics.OverlapSphere(transform.position, radius, ~0, QueryTriggerInteraction.Ignore);
+        HashSet<IDamageable> damagedTargets = new HashSet<IDamageable>();
+        float totalDamage = 0f;
+
+        foreach (Collider hit in hits)
+        {
+            IDamageable damageable = hit.GetComponentInParent<IDamageable>();
+            if (damageable == null || !damagedTargets.Add(damageable))
+                continue;
+
+            float distance = Vector3.Distance(transform.position, hit.ClosestPoint(transform.position));
+            float dealtDamage = damage * Mathf.Clamp01(1f - distance / radius);
+            if (dealtDamage > 1f)
+            {
+                damageable.TakeDamage(dealtDamage);
+                totalDamage += dealtDamage;
+            }
+        }
+
+        if (totalDamage > 0f)
+            owner.ReportExplosiveHit(totalDamage);
+
+        GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flash.name = "Explosion";
+        flash.transform.position = transform.position;
+        flash.transform.localScale = Vector3.one * radius * 1.4f;
+        Destroy(flash.GetComponent<Collider>());
+        Material material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        material.color = new Color(1f, 0.25f, 0.03f);
+        flash.GetComponent<Renderer>().material = material;
+        Destroy(flash, 0.12f);
+        Destroy(gameObject);
+    }
+}

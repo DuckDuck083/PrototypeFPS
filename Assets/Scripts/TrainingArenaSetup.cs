@@ -127,7 +127,7 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         Material material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         material.color = color;
 
-        AddPart(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 1f, 0f), new Vector3(0.75f, 0.9f, 0.75f), material);
+        AddPart(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 1f, 0f), new Vector3(0.75f, 0.9f, 0.75f), material, true);
         AddPart(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.85f, 0f), Vector3.one * 0.55f, material, true);
 
         if (!followsPlayer)

@@ -558,6 +558,7 @@ GameObject:
   - component: {fileID: 1200000005}
   - component: {fileID: 1200000006}
   - component: {fileID: 1200000007}
+  - component: {fileID: 1200000008}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -647,12 +648,12 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   playerCamera: {fileID: 330585545}
-  rifleMagazineSize: 30
-  rifleReserveAmmo: 90
-  handgunMagazineSize: 12
-  handgunReserveAmmo: 48
-  sniperMagazineSize: 5
-  sniperReserveAmmo: 20
+  rifleMagazineSize: 1
+  rifleReserveAmmo: 10
+  handgunMagazineSize: 1
+  handgunReserveAmmo: 0
+  sniperMagazineSize: 4
+  sniperReserveAmmo: 0
   range: 100
   hitForce: 8
 --- !u!114 &1200000006
@@ -682,6 +683,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ca6e02cf9ace468caec68ce93db8ff20, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+--- !u!114 &1200000008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1200000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d0da51b491149b59799543e0a11ad45, type: 3}
   m_Name:
   m_EditorClassIdentifier:
 --- !u!1660057539 &9223372036854775807

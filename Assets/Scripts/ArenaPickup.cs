@@ -45,7 +45,7 @@ public sealed class ArenaPickup : MonoBehaviour
             SimpleRifle weapons = other.GetComponent<SimpleRifle>();
             collected = weapons != null;
             if (collected)
-                weapons.AddReserveAmmo(30, 12, 5);
+                weapons.AddReserveAmmo(2, 0, 2);
         }
 
         if (collected)
