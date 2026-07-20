@@ -42,6 +42,7 @@ public sealed class GameMenu : MonoBehaviour
         vitals.enabled = true;
         movement.enabled = true;
         weapons.enabled = true;
+        weapons.EquipLoadoutSlot(0);
     }
 
     private void OnDestroy()
@@ -80,19 +81,19 @@ public sealed class GameMenu : MonoBehaviour
     private void DrawLoadout()
     {
         GUI.Label(new Rect(Screen.width * 0.5f - 250f, 155f, 500f, 38f), "ACTIVE LOADOUT", CenteredStyle(26));
-        string[] slots = { "SLOT 1\nROCKET LAUNCHER", "SLOT 2\nRIOT SHIELD", "SLOT 3\nBATON", "SLOT 4\nGRENADE" };
         float totalWidth = 700f;
         float startX = Screen.width * 0.5f - totalWidth * 0.5f;
-        for (int i = 0; i < slots.Length; i++)
+        for (int i = 0; i < 4; i++)
         {
             Rect card = new Rect(startX + i * 175f, 230f, 160f, 115f);
             GUI.color = new Color(0.08f, 0.13f, 0.18f, 1f);
             GUI.DrawTexture(card, Texture2D.whiteTexture);
             GUI.color = Color.white;
-            GUI.Label(card, slots[i], CenteredStyle(17));
+            if (GUI.Button(card, $"SLOT {i + 1}\n{weapons.GetLoadoutSlotName(i)}\n\nCLICK TO CHANGE"))
+                weapons.CycleLoadoutSlot(i);
         }
 
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, 370f, 600f, 30f), "Additional weapon choices can be added to these slots later.", CenteredStyle(15));
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, 370f, 600f, 30f), "Assign any available weapon to any slot. Duplicate weapons are allowed.", CenteredStyle(15));
         if (GUI.Button(new Rect(Screen.width * 0.5f - 120f, 420f, 240f, 45f), "BACK")) loadoutOpen = false;
     }
 

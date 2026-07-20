@@ -44,6 +44,13 @@ public sealed class SimpleRifle : MonoBehaviour
     private Material tracerMaterial;
     private Material bulletHoleMaterial;
     private WeaponType currentWeapon;
+    private readonly WeaponType[] slotWeapons =
+    {
+        WeaponType.Rifle,
+        WeaponType.Handgun,
+        WeaponType.Melee,
+        WeaponType.Sniper
+    };
     private int rifleAmmo;
     private int handgunAmmo;
     private int sniperAmmo;
@@ -127,10 +134,10 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         if (!isReloading)
         {
-            if (rifleSelectAction.WasPressedThisFrame()) SelectWeapon(WeaponType.Rifle);
-            if (handgunSelectAction.WasPressedThisFrame()) SelectWeapon(WeaponType.Handgun);
-            if (meleeSelectAction.WasPressedThisFrame()) SelectWeapon(WeaponType.Melee);
-            if (sniperSelectAction.WasPressedThisFrame()) SelectWeapon(WeaponType.Sniper);
+            if (rifleSelectAction.WasPressedThisFrame()) SelectWeapon(slotWeapons[0]);
+            if (handgunSelectAction.WasPressedThisFrame()) SelectWeapon(slotWeapons[1]);
+            if (meleeSelectAction.WasPressedThisFrame()) SelectWeapon(slotWeapons[2]);
+            if (sniperSelectAction.WasPressedThisFrame()) SelectWeapon(slotWeapons[3]);
         }
 
         if (reloadAction.WasPressedThisFrame())
@@ -144,6 +151,37 @@ public sealed class SimpleRifle : MonoBehaviour
         }
 
         UpdateAimingVisuals();
+    }
+
+    public void CycleLoadoutSlot(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= slotWeapons.Length)
+            return;
+
+        int nextWeapon = ((int)slotWeapons[slotIndex] + 1) % 4;
+        slotWeapons[slotIndex] = (WeaponType)nextWeapon;
+    }
+
+    public void EquipLoadoutSlot(int slotIndex)
+    {
+        if (slotIndex >= 0 && slotIndex < slotWeapons.Length)
+            SelectWeapon(slotWeapons[slotIndex]);
+    }
+
+    public string GetLoadoutSlotName(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= slotWeapons.Length)
+            return "EMPTY";
+
+        return GetWeaponName(slotWeapons[slotIndex]);
+    }
+
+    private static string GetWeaponName(WeaponType weapon)
+    {
+        return weapon == WeaponType.Rifle ? "ROCKET LAUNCHER"
+            : weapon == WeaponType.Handgun ? "RIOT SHIELD"
+            : weapon == WeaponType.Melee ? "BATON"
+            : "GRENADE";
     }
 
     private void UpdateSniperCharge()
@@ -408,8 +446,12 @@ public sealed class SimpleRifle : MonoBehaviour
         AddPart(rifleModel, "Sight", new Vector3(0f, 0.16f, 0.36f), new Vector3(0.08f, 0.08f, 0.2f), dark);
 
         handgunModel = CreateModelRoot("Riot Shield");
-        AddPart(handgunModel, "Shield", new Vector3(0f, 0.05f, 0.2f), new Vector3(0.75f, 0.95f, 0.08f), metal);
-        AddPart(handgunModel, "Viewport", new Vector3(0f, 0.25f, 0.14f), new Vector3(0.38f, 0.16f, 0.04f), dark);
+        AddPart(handgunModel, "Shield Left", new Vector3(-0.28f, 0.05f, 0.2f), new Vector3(0.19f, 0.95f, 0.08f), metal);
+        AddPart(handgunModel, "Shield Right", new Vector3(0.28f, 0.05f, 0.2f), new Vector3(0.19f, 0.95f, 0.08f), metal);
+        AddPart(handgunModel, "Shield Top", new Vector3(0f, 0.43f, 0.2f), new Vector3(0.75f, 0.19f, 0.08f), metal);
+        AddPart(handgunModel, "Shield Bottom", new Vector3(0f, -0.25f, 0.2f), new Vector3(0.75f, 0.57f, 0.08f), metal);
+        AddPart(handgunModel, "Window Rim Top", new Vector3(0f, 0.32f, 0.18f), new Vector3(0.39f, 0.035f, 0.04f), dark);
+        AddPart(handgunModel, "Window Rim Bottom", new Vector3(0f, 0.05f, 0.18f), new Vector3(0.39f, 0.035f, 0.04f), dark);
 
         meleeModel = CreateModelRoot("Training Baton");
         AddPart(meleeModel, "Handle", new Vector3(0f, -0.16f, 0.02f), new Vector3(0.1f, 0.32f, 0.1f), dark, 18f);
@@ -520,7 +562,7 @@ public sealed class SimpleRifle : MonoBehaviour
         GUIStyle centered = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
         centered.normal.textColor = Color.white;
         GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
-        string weaponName = currentWeapon == WeaponType.Rifle ? "ROCKET LAUNCHER [1]" : currentWeapon == WeaponType.Handgun ? "RIOT SHIELD [2]" : currentWeapon == WeaponType.Melee ? "BATON [3]" : "GRENADES [4]";
+        string weaponName = GetWeaponName(currentWeapon);
         string ammoText = currentWeapon == WeaponType.Melee || currentWeapon == WeaponType.Handgun ? weaponName : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
         GUI.color = new Color(0f, 0f, 0f, 0.65f);
         GUI.DrawTexture(new Rect(Screen.width - 300f, Screen.height - 92f, 275f, 65f), Texture2D.whiteTexture);
