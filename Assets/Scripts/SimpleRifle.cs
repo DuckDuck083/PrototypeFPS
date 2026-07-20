@@ -49,10 +49,10 @@ public sealed class SimpleRifle : MonoBehaviour
     private int currentSlot;
     private static readonly string[][] SlotWeaponNames =
     {
-        new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN" },
+        new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER" },
         new[] { "RIOT SHIELD", "HANDGUN", "REVOLVER", "MEDPACK" },
-        new[] { "BATON", "FISTS", "KNIFE", "SCYTHE" },
-        new[] { "SNIPER RIFLE", "FRAG GRENADE", "SMOKE GRENADE", "PROXIMITY MINE" }
+        new[] { "BATON", "FISTS", "KNIFE", "SCYTHE", "AXE" },
+        new[] { "SNIPER RIFLE", "FRAG GRENADE", "SMOKE GRENADE", "PROXIMITY MINE", "VAMP PISTOL" }
     };
     private int rifleAmmo;
     private int handgunAmmo;
@@ -74,6 +74,8 @@ public sealed class SimpleRifle : MonoBehaviour
     private const int MaximumRocketReserve = 12;
     private const int MaximumGrenades = 8;
     private float nextDashTime;
+    private float dashAnimationUntil;
+    private readonly System.Collections.Generic.List<ExplosiveProjectile> activeStickies = new System.Collections.Generic.List<ExplosiveProjectile>();
     private float recoilPitch;
     private float recoilYaw;
     private static Texture2D scopeMaskTexture;
@@ -154,6 +156,9 @@ public sealed class SimpleRifle : MonoBehaviour
         if (currentSlot == 2 && slotSelections[2] == 3 && aimAction.WasPressedThisFrame() && Time.time >= nextDashTime)
             ScytheDash();
 
+        if (currentSlot == 0 && slotSelections[0] == 5 && aimAction.WasPressedThisFrame())
+            DetonateStickies();
+
         if (currentSlot == 3 && slotSelections[3] == 0 && !isReloading && aimAction.WasPressedThisFrame())
             sniperScopeToggled = !sniperScopeToggled;
 
@@ -178,13 +183,13 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public void SetLoadoutSlot(int slotIndex, int weaponIndex)
     {
-        if (slotIndex < 0 || slotIndex >= 4 || weaponIndex < 0 || weaponIndex > 3)
+        if (slotIndex < 0 || slotIndex >= 4 || weaponIndex < 0 || weaponIndex >= SlotWeaponNames[slotIndex].Length)
             return;
         slotSelections[slotIndex] = weaponIndex;
         if (slotIndex == 0)
         {
-            int[] magazines = { 30, 4, 8, 100 };
-            int[] reserves = { 90, 12, 32, 200 };
+            int[] magazines = { 30, 4, 8, 100, 6, 8 };
+            int[] reserves = { 90, 12, 32, 200, 24, 24 };
             rifleMagazineSize = magazines[weaponIndex];
             rifleAmmo = rifleMagazineSize;
             rifleReserveAmmo = reserves[weaponIndex];
@@ -199,7 +204,7 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         else if (slotIndex == 3)
         {
-            int[] ammunition = { 1, 4, 3, 2 };
+            int[] ammunition = { 1, 4, 3, 2, 10 };
             sniperMagazineSize = ammunition[weaponIndex];
             sniperAmmo = ammunition[weaponIndex];
             sniperReserveAmmo = weaponIndex == 0 ? 24 : 0;
@@ -226,10 +231,12 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public string GetLoadoutOptionName(int slotIndex, int optionIndex)
     {
-        return slotIndex >= 0 && slotIndex < 4 && optionIndex >= 0 && optionIndex < 4
+        return slotIndex >= 0 && slotIndex < 4 && optionIndex >= 0 && optionIndex < SlotWeaponNames[slotIndex].Length
             ? SlotWeaponNames[slotIndex][optionIndex]
             : "EMPTY";
     }
+
+    public int GetLoadoutOptionCount(int slotIndex) => slotIndex >= 0 && slotIndex < 4 ? SlotWeaponNames[slotIndex].Length : 0;
 
     private void SelectSlot(int slotIndex)
     {
@@ -305,11 +312,23 @@ public sealed class SimpleRifle : MonoBehaviour
             AddPart(model, "Shell Tube", new Vector3(0f, -0.11f, 0.55f), new Vector3(0.08f, 0.08f, 0.58f), accent);
             AddPart(model, "Wood Stock", new Vector3(0f, -0.04f, -0.13f), new Vector3(0.19f, 0.2f, 0.38f), accent, -7f);
         }
-        else if (slot == 0)
+        else if (slot == 0 && option == 3)
         {
             AddPart(model, "Barrel Cluster", new Vector3(0f, 0.02f, 0.9f), new Vector3(0.29f, 0.29f, 0.55f), dark);
             AddPart(model, "Ammo Drum", new Vector3(0f, -0.22f, 0.25f), new Vector3(0.38f, 0.38f, 0.22f), accent, 90f);
             AddPart(model, "Rear Motor", new Vector3(0f, 0f, -0.18f), new Vector3(0.3f, 0.3f, 0.28f), metal);
+        }
+        else if (slot == 0 && option == 4)
+        {
+            AddPart(model, "Grenade Drum", new Vector3(0f, -0.18f, 0.25f), new Vector3(0.34f, 0.34f, 0.3f), accent, 90f);
+            AddPart(model, "Wide Muzzle", new Vector3(0f, 0f, 0.88f), new Vector3(0.3f, 0.3f, 0.22f), dark);
+            AddPart(model, "Launcher Stock", new Vector3(0f, -0.02f, -0.2f), new Vector3(0.23f, 0.2f, 0.4f), dark);
+        }
+        else if (slot == 0)
+        {
+            AddPart(model, "Sticky Canister", new Vector3(0f, -0.16f, 0.23f), new Vector3(0.4f, 0.28f, 0.38f), accent);
+            AddPart(model, "Detonator Aerial", new Vector3(0.18f, 0.18f, 0.2f), new Vector3(0.035f, 0.3f, 0.035f), metal, -15f);
+            AddPart(model, "Forked Muzzle", new Vector3(0f, 0f, 0.86f), new Vector3(0.35f, 0.12f, 0.22f), dark);
         }
         else if (slot == 1 && option == 0)
         {
@@ -331,17 +350,28 @@ public sealed class SimpleRifle : MonoBehaviour
         else if (slot == 2 && option == 0) AddPart(model, "Guard", new Vector3(0f, -0.02f, 0.05f), new Vector3(0.32f, 0.06f, 0.08f), accent);
         else if (slot == 2 && option == 1) AddPart(model, "Knuckle Guard", new Vector3(0f, 0.04f, 0.12f), new Vector3(0.32f, 0.18f, 0.12f), metal);
         else if (slot == 2 && option == 2) AddPart(model, "Knife Guard", new Vector3(0f, -0.03f, 0.08f), new Vector3(0.28f, 0.05f, 0.08f), accent);
-        else if (slot == 2) AddPart(model, "Scythe Blade", new Vector3(0.17f, 0.5f, 0.2f), new Vector3(0.42f, 0.06f, 0.12f), metal, 18f);
+        else if (slot == 2 && option == 3) AddPart(model, "Scythe Blade", new Vector3(0.17f, 0.5f, 0.2f), new Vector3(0.42f, 0.06f, 0.12f), metal, 18f);
+        else if (slot == 2)
+        {
+            AddPart(model, "Axe Head", new Vector3(0.12f, 0.45f, 0.18f), new Vector3(0.42f, 0.28f, 0.1f), metal, 15f);
+            AddPart(model, "Axe Edge", new Vector3(0.3f, 0.46f, 0.18f), new Vector3(0.12f, 0.36f, 0.07f), accent, 15f);
+        }
         else if (slot == 3 && option == 0)
         {
             AddPart(model, "Stock", new Vector3(0f, -0.02f, -0.35f), new Vector3(0.2f, 0.2f, 0.45f), dark);
             AddPart(model, "Bipod", new Vector3(0f, -0.14f, 0.72f), new Vector3(0.32f, 0.06f, 0.08f), accent);
             AddPart(model, "Muzzle Brake", new Vector3(0f, 0f, 1.02f), new Vector3(0.25f, 0.2f, 0.16f), dark);
         }
-        else
+        else if (option != 4)
         {
             AddPart(model, option == 3 ? "Mine Sensor" : "Safety Lever", new Vector3(0f, 0.22f, 0.25f), new Vector3(0.12f, 0.08f, 0.24f), option == 2 ? accent : dark, -12f);
             AddPart(model, "Safety Pin", new Vector3(0.16f, 0.14f, 0.25f), new Vector3(0.05f, 0.2f, 0.05f), metal, 30f);
+        }
+        else
+        {
+            AddPart(model, "Vamp Pistol Slide", new Vector3(0f, 0.04f, 0.35f), new Vector3(0.18f, 0.13f, 0.62f), dark);
+            AddPart(model, "Healing Vial", new Vector3(0.13f, 0.02f, 0.2f), new Vector3(0.08f, 0.22f, 0.08f), accent);
+            AddPart(model, "Pistol Grip", new Vector3(0f, -0.2f, 0.06f), new Vector3(0.15f, 0.34f, 0.16f), metal, 12f);
         }
     }
 
@@ -354,6 +384,8 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 1 && attackAction.WasPressedThisFrame()) LaunchRocket();
             else if (option == 2 && attackAction.WasPressedThisFrame()) FireHitscan(12f, 0.62f, 12, IsAiming ? 0.075f : 0.12f, false);
             else if (option == 3 && attackAction.IsPressed()) FireHitscan(10f, 0.065f, 1, 0.018f, false);
+            else if (option == 4 && attackAction.WasPressedThisFrame()) LaunchBouncingGrenade();
+            else if (option == 5 && attackAction.WasPressedThisFrame()) LaunchStickyBomb();
         }
         else if (currentSlot == 1)
         {
@@ -370,8 +402,8 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         else if (currentSlot == 2 && attackAction.IsPressed())
         {
-            float[] damages = { 45f, 38f, 60f, 85f };
-            float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f };
+            float[] damages = { 45f, 38f, 60f, 85f, 78f };
+            float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f, 0.78f };
             SwingMelee(damages[option], delays[option], option == 3 ? 3.2f : 2.4f, option == 2 ? 0.22f : 0f);
         }
         else if (currentSlot == 3)
@@ -380,10 +412,12 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 1) UpdateGrenadePriming();
             else if (option == 2 && attackAction.WasPressedThisFrame()) ThrowSmokeGrenade();
             else if (option == 3 && attackAction.WasPressedThisFrame()) PlaceMine();
+            else if (option == 4 && attackAction.WasPressedThisFrame()) FireHitscan(16f, 0.3f, 1, IsAiming ? 0.003f : 0.012f, false, 0f, false, 12f);
         }
+
     }
 
-    private void FireHitscan(float damage, float delay, int pellets, float spread, bool headshotCriticals, float miniCritChance = 0f, bool miniCrits = false)
+    private void FireHitscan(float damage, float delay, int pellets, float spread, bool headshotCriticals, float miniCritChance = 0f, bool miniCrits = false, float healingOnHit = 0f)
     {
         if (CurrentAmmo <= 0) { TryReload(); return; }
         SetCurrentAmmo(CurrentAmmo - 1);
@@ -414,6 +448,7 @@ public sealed class SimpleRifle : MonoBehaviour
             lastDamageAmount = dealt;
             lastHitWasCritical = critical || miniCritical;
             registeredHit = true;
+            if (healingOnHit > 0f) GetComponent<PlayerVitals>().Heal(healingOnHit);
         }
         if (registeredHit) hitMarkerUntil = Time.time + 0.35f;
         gunshotAudio.pitch = Random.Range(0.92f, 1.08f);
@@ -439,6 +474,7 @@ public sealed class SimpleRifle : MonoBehaviour
         CharacterController controller = GetComponent<CharacterController>();
         controller.Move(transform.forward * 5.5f);
         nextDashTime = Time.time + 2.2f;
+        dashAnimationUntil = Time.time + 0.32f;
     }
 
     private void ThrowSmokeGrenade()
@@ -537,6 +573,14 @@ public sealed class SimpleRifle : MonoBehaviour
             return;
         }
 
+        if (Time.time < dashAnimationUntil)
+        {
+            float phase = 1f - (dashAnimationUntil - Time.time) / 0.32f;
+            currentModel.localPosition = currentRestPosition + new Vector3(-0.3f, 0.15f, 0.25f) * Mathf.Sin(phase * Mathf.PI);
+            currentModel.localRotation = Quaternion.Euler(-25f, 25f, Mathf.Lerp(-95f, 55f, phase));
+            return;
+        }
+
         recoilPitch = Mathf.MoveTowards(recoilPitch, 0f, 18f * Time.deltaTime);
         recoilYaw = Mathf.MoveTowards(recoilYaw, 0f, 12f * Time.deltaTime);
         Vector3 shieldRaisedPosition = new Vector3(0f, -0.08f, 0.38f);
@@ -577,6 +621,62 @@ public sealed class SimpleRifle : MonoBehaviour
 
         if (rifleAmmo == 0)
             TryReload();
+    }
+
+    private void LaunchBouncingGrenade()
+    {
+        if (rifleAmmo <= 0) { TryReload(); return; }
+        rifleAmmo--;
+        nextShotTime = Time.time + 0.72f;
+        GameObject grenade = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        grenade.name = "Launcher Grenade";
+        grenade.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 0.9f;
+        grenade.transform.localScale = Vector3.one * 0.24f;
+        Rigidbody body = grenade.AddComponent<Rigidbody>();
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.linearVelocity = playerCamera.transform.forward * 18f + Vector3.up * 1.8f;
+        body.mass = 0.65f;
+        Collider grenadeCollider = grenade.GetComponent<Collider>();
+        Collider playerCollider = GetComponent<Collider>();
+        if (playerCollider != null) Physics.IgnoreCollision(grenadeCollider, playerCollider);
+        PhysicMaterial bounce = new PhysicMaterial("Grenade Bounce") { bounciness = 0.68f, dynamicFriction = 0.25f, staticFriction = 0.25f, bounceCombine = PhysicMaterialCombine.Maximum };
+        grenadeCollider.material = bounce;
+        ExplosiveProjectile explosive = grenade.AddComponent<ExplosiveProjectile>();
+        explosive.Configure(95f, 4.5f, 3.2f, false, this, false, true);
+        CreateMuzzleFlash();
+        ApplyRecoil(4.5f, 1f);
+    }
+
+    private void LaunchStickyBomb()
+    {
+        if (rifleAmmo <= 0) { TryReload(); return; }
+        rifleAmmo--;
+        nextShotTime = Time.time + 0.55f;
+        GameObject sticky = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        sticky.name = "Stickybomb";
+        sticky.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 0.9f;
+        sticky.transform.localScale = new Vector3(0.32f, 0.16f, 0.32f);
+        Rigidbody body = sticky.AddComponent<Rigidbody>();
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.linearVelocity = playerCamera.transform.forward * 15f + Vector3.up * 1.5f;
+        Collider playerCollider = GetComponent<Collider>();
+        if (playerCollider != null) Physics.IgnoreCollision(sticky.GetComponent<Collider>(), playerCollider);
+        ExplosiveProjectile explosive = sticky.AddComponent<ExplosiveProjectile>();
+        explosive.Configure(105f, 4.8f, 45f, false, this, false, false, true);
+        activeStickies.RemoveAll(item => item == null);
+        activeStickies.Add(explosive);
+        if (activeStickies.Count > 8) activeStickies[0].Detonate();
+        CreateMuzzleFlash();
+        ApplyRecoil(3.5f, 0.8f);
+    }
+
+    private void DetonateStickies()
+    {
+        activeStickies.RemoveAll(item => item == null);
+        ExplosiveProjectile[] bombs = activeStickies.ToArray();
+        activeStickies.Clear();
+        foreach (ExplosiveProjectile bomb in bombs)
+            if (bomb != null) bomb.Detonate();
     }
 
     private void ThrowGrenade()
@@ -733,17 +833,19 @@ public sealed class SimpleRifle : MonoBehaviour
         int oldPrimary = rifleReserveAmmo;
         int oldSecondary = handgunReserveAmmo;
         int oldSpecial = sniperAmmo + sniperReserveAmmo;
-        int[] primaryAdds = { 30, 2, 8, 100 };
-        int[] primaryCaps = { 180, 12, 64, 400 };
+        int[] primaryAdds = { 30, 2, 8, 100, 6, 8 };
+        int[] primaryCaps = { 180, 12, 64, 400, 48, 48 };
         rifleReserveAmmo = Mathf.Min(primaryCaps[slotSelections[0]], rifleReserveAmmo + primaryAdds[slotSelections[0]]);
 
         if (slotSelections[1] == 1) handgunReserveAmmo = Mathf.Min(96, handgunReserveAmmo + 12);
         else if (slotSelections[1] == 2) handgunReserveAmmo = Mathf.Min(60, handgunReserveAmmo + 6);
 
         if (slotSelections[3] == 0) sniperReserveAmmo = Mathf.Min(24, sniperReserveAmmo + 5);
+        else if (slotSelections[3] == 4)
+            sniperAmmo = Mathf.Min(20, sniperAmmo + 10);
         else
         {
-            int[] specialistAdds = { 0, 2, 2, 1 };
+            int[] specialistAdds = { 0, 2, 2, 1, 0 };
             sniperAmmo = Mathf.Min(MaximumGrenades, sniperAmmo + specialistAdds[slotSelections[3]]);
         }
 
@@ -752,9 +854,9 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public void RestoreSpawnAmmo()
     {
-        int[] primaryReserves = { 90, 12, 32, 200 };
+        int[] primaryReserves = { 90, 12, 32, 200, 24, 24 };
         int[] secondaryReserves = { 0, 48, 30, 0 };
-        int[] specialistAmmo = { 1, 4, 3, 2 };
+        int[] specialistAmmo = { 1, 4, 3, 2, 10 };
         rifleAmmo = rifleMagazineSize;
         rifleReserveAmmo = primaryReserves[slotSelections[0]];
         handgunAmmo = slotSelections[1] == 0 ? 0 : handgunMagazineSize;
@@ -984,6 +1086,18 @@ public sealed class SimpleRifle : MonoBehaviour
             GUIStyle primeStyle = new GUIStyle(help) { fontSize = 15, fontStyle = FontStyle.Bold };
             primeStyle.normal.textColor = Color.Lerp(Color.white, new Color(1f, 0.25f, 0.08f), primeRatio);
             GUI.Label(new Rect(Screen.width * 0.5f - 150f, Screen.height - 120f, 300f, 26f), $"PRIMING  {grenadePrimeTime:0.0}s", primeStyle);
+        }
+
+        if (currentSlot == 2 && slotSelections[2] == 3)
+        {
+            float ready = Mathf.Clamp01(1f - (nextDashTime - Time.time) / 2.2f);
+            Rect dashBar = new Rect(Screen.width * 0.5f - 105f, Screen.height - 145f, 210f, 13f);
+            GUI.color = new Color(0f, 0f, 0f, 0.85f);
+            GUI.DrawTexture(dashBar, Texture2D.whiteTexture);
+            GUI.color = ready >= 1f ? new Color(0.35f, 1f, 0.35f) : new Color(0.35f, 0.75f, 1f);
+            GUI.DrawTexture(new Rect(dashBar.x + 2f, dashBar.y + 2f, (dashBar.width - 4f) * ready, dashBar.height - 4f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(dashBar.x, dashBar.y - 23f, dashBar.width, 22f), ready >= 1f ? "DASH READY [RMB]" : "DASH RECHARGING", help);
         }
     }
 

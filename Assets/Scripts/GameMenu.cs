@@ -94,8 +94,7 @@ public sealed class GameMenu : MonoBehaviour
         float availableHeight = Mathf.Max(180f, Screen.height - startY - 120f);
         float rowHeight = Mathf.Clamp(availableHeight / 4f, 42f, 58f);
         float labelWidth = Mathf.Clamp(panelWidth * 0.14f, 65f, 90f);
-        float buttonGap = 6f;
-        float buttonWidth = (panelWidth - labelWidth - buttonGap * 4f) / 4f;
+        float buttonGap = 5f;
         GUIStyle optionStyle = new GUIStyle(GUI.skin.button) { fontSize = Screen.width < 800 ? 10 : 12, wordWrap = true };
 
         GUI.Label(new Rect(Screen.width * 0.5f - 250f, startY - 48f, 500f, 38f), "ACTIVE LOADOUT", CenteredStyle(Screen.height < 650 ? 21 : 26));
@@ -104,7 +103,9 @@ public sealed class GameMenu : MonoBehaviour
         {
             float rowY = startY + slot * rowHeight;
             GUI.Label(new Rect(startX, rowY, labelWidth, rowHeight - 8f), $"SLOT {slot + 1}", CenteredStyle(15));
-            for (int weapon = 0; weapon < 4; weapon++)
+            int optionCount = weapons.GetLoadoutOptionCount(slot);
+            float buttonWidth = (panelWidth - labelWidth - buttonGap * optionCount) / optionCount;
+            for (int weapon = 0; weapon < optionCount; weapon++)
             {
                 bool selected = weapons.IsLoadoutSelection(slot, weapon);
                 GUI.backgroundColor = selected ? new Color(0.15f, 0.7f, 1f) : new Color(0.2f, 0.25f, 0.3f);

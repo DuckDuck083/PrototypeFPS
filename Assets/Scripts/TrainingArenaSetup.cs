@@ -12,6 +12,9 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         CreateTarget("Enemy Heavy", new Vector3(19f, 0f, -12f), new Color(0.5f, 0.08f, 0.12f), true, 150f, 1.45f, 9f);
         CreateTarget("Enemy Raider", new Vector3(-22f, 0f, -18f), new Color(0.82f, 0.13f, 0.3f), true, 80f, 2.8f, 6f);
         CreateTarget("Enemy Hunter", new Vector3(2f, 0f, 28f), new Color(0.75f, 0.25f, 0.05f), true, 100f, 2.1f, 7f);
+        CreateSpecialOps("Spec Ops Sidearm", new Vector3(-28f, 0f, 3f), false);
+        CreateSpecialOps("Spec Ops Rifleman", new Vector3(27f, 0f, 12f), true);
+        CreateSpecialOps("Spec Ops Rifleman 2", new Vector3(-12f, 0f, -31f), true);
 
         CreatePickup(new Vector3(5f, 0.7f, 5f), ArenaPickup.PickupType.Health);
         CreatePickup(new Vector3(-18f, 0.7f, 10f), ArenaPickup.PickupType.Health);
@@ -137,6 +140,26 @@ public sealed class TrainingArenaSetup : MonoBehaviour
 
         TrainingTarget target = root.AddComponent<TrainingTarget>();
         target.Configure(followsPlayer, health, speed, damage);
+    }
+
+    private static void CreateSpecialOps(string targetName, Vector3 position, bool rifle)
+    {
+        GameObject root = new GameObject(targetName);
+        root.transform.position = position;
+        CharacterController controller = root.AddComponent<CharacterController>();
+        controller.height = 1.7f;
+        controller.radius = 0.43f;
+        controller.center = Vector3.up * 0.85f;
+        Material green = CreateArenaMaterial(new Color(0.08f, 0.3f, 0.12f), 0.15f, 0.3f);
+        Material black = CreateArenaMaterial(new Color(0.025f, 0.04f, 0.03f), 0.5f, 0.25f);
+        AddPart(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 1f, 0f), new Vector3(0.72f, 0.9f, 0.72f), green, true);
+        AddPart(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.86f, 0f), Vector3.one * 0.52f, green, true);
+        AddPart(root.transform, "Helmet", PrimitiveType.Sphere, new Vector3(0f, 2.02f, 0f), new Vector3(0.6f, 0.3f, 0.58f), black);
+        AddPart(root.transform, "Vest", PrimitiveType.Cube, new Vector3(0f, 1.15f, 0.05f), new Vector3(0.78f, 0.58f, 0.42f), black);
+        AddPart(root.transform, rifle ? "Rifle" : "Handgun", PrimitiveType.Cube, new Vector3(0.28f, 1.28f, 0.48f), rifle ? new Vector3(0.12f, 0.12f, 0.95f) : new Vector3(0.12f, 0.14f, 0.42f), black);
+        TrainingTarget target = root.AddComponent<TrainingTarget>();
+        target.Configure(true, rifle ? 95f : 70f, rifle ? 2.1f : 2.7f, rifle ? 5f : 9f);
+        target.ConfigureRanged(rifle);
     }
 
     private static void AddPart(Transform parent, string partName, PrimitiveType shape, Vector3 localPosition, Vector3 scale, Material material, bool keepCollider = false)

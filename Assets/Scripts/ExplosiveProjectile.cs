@@ -8,11 +8,13 @@ public sealed class ExplosiveProjectile : MonoBehaviour
     private float fuse;
     private bool explodeOnImpact;
     private bool proximityMine;
+    private bool enemyImpactOnly;
+    private bool sticky;
     private float armDelay;
     private SimpleRifle owner;
     private bool exploded;
 
-    public void Configure(float explosionDamage, float explosionRadius, float fuseTime, bool impactExplosion, SimpleRifle weaponOwner, bool useProximityTrigger = false)
+    public void Configure(float explosionDamage, float explosionRadius, float fuseTime, bool impactExplosion, SimpleRifle weaponOwner, bool useProximityTrigger = false, bool impactEnemiesOnly = false, bool stickOnCollision = false)
     {
         damage = explosionDamage;
         radius = explosionRadius;
@@ -20,6 +22,8 @@ public sealed class ExplosiveProjectile : MonoBehaviour
         explodeOnImpact = impactExplosion;
         owner = weaponOwner;
         proximityMine = useProximityTrigger;
+        enemyImpactOnly = impactEnemiesOnly;
+        sticky = stickOnCollision;
         armDelay = useProximityTrigger ? 0.75f : 0f;
     }
 
@@ -45,9 +49,19 @@ public sealed class ExplosiveProjectile : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (explodeOnImpact)
+        if (explodeOnImpact || (enemyImpactOnly && collision.collider.GetComponentInParent<TrainingTarget>() != null))
             Explode();
+        else if (sticky)
+        {
+            Rigidbody body = GetComponent<Rigidbody>();
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            body.isKinematic = true;
+            transform.SetParent(collision.transform, true);
+        }
     }
+
+    public void Detonate() => Explode();
 
     private void Explode()
     {

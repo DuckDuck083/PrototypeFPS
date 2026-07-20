@@ -8,6 +8,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     [SerializeField, Min(0f)] private float attackDamage = 5f;
     [SerializeField, Min(0.1f)] private float attackInterval = 1f;
     [SerializeField, Min(0f)] private float respawnDelay = 2.5f;
+    [SerializeField] private bool usesRangedWeapon;
+    [SerializeField] private bool usesRifle;
 
     private PlayerVitals player;
     private CharacterController controller;
@@ -25,6 +27,13 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         moveSpeed = speed;
         attackDamage = damage;
         health = maximumHealth;
+    }
+
+    public void ConfigureRanged(bool rifle)
+    {
+        usesRangedWeapon = true;
+        usesRifle = rifle;
+        attackInterval = rifle ? 0.32f : 0.85f;
     }
 
     private void Awake()
@@ -52,7 +61,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         offset.y = 0f;
         float distance = offset.magnitude;
 
-        if (distance > 1.35f)
+        float desiredRange = usesRangedWeapon ? (usesRifle ? 14f : 10f) : 1.35f;
+        if (distance > desiredRange)
         {
             Vector3 direction = offset.normalized;
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), 8f * Time.deltaTime);
@@ -60,9 +70,43 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         }
         else if (Time.time >= nextAttackTime)
         {
-            player.TakeDamage(attackDamage);
+            if (!usesRangedWeapon || HasLineOfSight())
+            {
+                player.TakeDamage(attackDamage);
+                if (usesRangedWeapon) DrawEnemyTracer();
+            }
             nextAttackTime = Time.time + attackInterval;
         }
+    }
+
+    private bool HasLineOfSight()
+    {
+        Vector3 start = transform.position + Vector3.up * 1.45f;
+        Vector3 end = player.transform.position + Vector3.up * 1.2f;
+        Vector3 direction = end - start;
+        RaycastHit[] hits = Physics.RaycastAll(start, direction.normalized, direction.magnitude, ~0, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider.transform.root == transform) continue;
+            return hit.collider.GetComponentInParent<PlayerVitals>() != null;
+        }
+        return true;
+    }
+
+    private void DrawEnemyTracer()
+    {
+        GameObject tracer = new GameObject("Enemy Bullet Tracer");
+        LineRenderer line = tracer.AddComponent<LineRenderer>();
+        line.positionCount = 2;
+        line.startWidth = 0.018f;
+        line.endWidth = 0.004f;
+        line.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        line.startColor = new Color(0.35f, 1f, 0.3f, 0.9f);
+        line.endColor = new Color(1f, 0.7f, 0.15f, 0.1f);
+        line.SetPosition(0, transform.position + Vector3.up * 1.35f + transform.forward * 0.6f);
+        line.SetPosition(1, player.transform.position + Vector3.up * 1.15f);
+        Destroy(tracer, 0.08f);
     }
 
     public void TakeDamage(float amount)
