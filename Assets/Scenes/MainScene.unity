@@ -648,12 +648,12 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   playerCamera: {fileID: 330585545}
-  rifleMagazineSize: 4
-  rifleReserveAmmo: 10
+  rifleMagazineSize: 30
+  rifleReserveAmmo: 90
   handgunMagazineSize: 1
   handgunReserveAmmo: 0
-  sniperMagazineSize: 4
-  sniperReserveAmmo: 0
+  sniperMagazineSize: 5
+  sniperReserveAmmo: 20
   range: 100
   hitForce: 8
 --- !u!114 &1200000006

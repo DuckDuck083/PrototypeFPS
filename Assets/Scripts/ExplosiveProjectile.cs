@@ -7,21 +7,38 @@ public sealed class ExplosiveProjectile : MonoBehaviour
     private float radius;
     private float fuse;
     private bool explodeOnImpact;
+    private bool proximityMine;
+    private float armDelay;
     private SimpleRifle owner;
     private bool exploded;
 
-    public void Configure(float explosionDamage, float explosionRadius, float fuseTime, bool impactExplosion, SimpleRifle weaponOwner)
+    public void Configure(float explosionDamage, float explosionRadius, float fuseTime, bool impactExplosion, SimpleRifle weaponOwner, bool useProximityTrigger = false)
     {
         damage = explosionDamage;
         radius = explosionRadius;
         fuse = fuseTime;
         explodeOnImpact = impactExplosion;
         owner = weaponOwner;
+        proximityMine = useProximityTrigger;
+        armDelay = useProximityTrigger ? 0.75f : 0f;
     }
 
     private void Update()
     {
         fuse -= Time.deltaTime;
+        armDelay -= Time.deltaTime;
+        if (proximityMine && armDelay <= 0f)
+        {
+            Collider[] nearby = Physics.OverlapSphere(transform.position, 2.8f, ~0, QueryTriggerInteraction.Ignore);
+            foreach (Collider candidate in nearby)
+            {
+                if (candidate.GetComponentInParent<TrainingTarget>() != null)
+                {
+                    Explode();
+                    return;
+                }
+            }
+        }
         if (fuse <= 0f)
             Explode();
     }

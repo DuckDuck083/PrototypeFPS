@@ -9,6 +9,14 @@ public sealed class GameMenu : MonoBehaviour
     private bool menuOpen = true;
     private bool loadoutOpen;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void EnsureMenuExists()
+    {
+        PlayerVitals player = FindAnyObjectByType<PlayerVitals>();
+        if (player != null && player.GetComponent<GameMenu>() == null)
+            player.gameObject.AddComponent<GameMenu>();
+    }
+
     private void Start()
     {
         movement = GetComponent<FirstPersonController>();
@@ -81,7 +89,6 @@ public sealed class GameMenu : MonoBehaviour
     private void DrawLoadout()
     {
         GUI.Label(new Rect(Screen.width * 0.5f - 250f, 155f, 500f, 38f), "ACTIVE LOADOUT", CenteredStyle(26));
-        string[] weaponNames = { "ROCKET", "SHIELD", "BATON", "GRENADE" };
         float startX = Screen.width * 0.5f - 310f;
         float startY = 215f;
 
@@ -93,7 +100,8 @@ public sealed class GameMenu : MonoBehaviour
                 bool selected = weapons.IsLoadoutSelection(slot, weapon);
                 GUI.backgroundColor = selected ? new Color(0.15f, 0.7f, 1f) : new Color(0.2f, 0.25f, 0.3f);
                 Rect button = new Rect(startX + 100f + weapon * 130f, startY + slot * 58f, 120f, 42f);
-                if (GUI.Button(button, selected ? $"✓ {weaponNames[weapon]}" : weaponNames[weapon]))
+                string optionName = weapons.GetLoadoutOptionName(slot, weapon);
+                if (GUI.Button(button, selected ? $"✓ {optionName}" : optionName))
                     weapons.SetLoadoutSlot(slot, weapon);
             }
             GUI.backgroundColor = Color.white;
