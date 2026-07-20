@@ -50,6 +50,7 @@ public sealed class GameMenu : MonoBehaviour
         vitals.enabled = true;
         movement.enabled = true;
         weapons.enabled = true;
+        movement.RestoreControls();
         weapons.EquipLoadoutSlot(0);
     }
 
@@ -69,7 +70,7 @@ public sealed class GameMenu : MonoBehaviour
 
         GUIStyle title = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 44, fontStyle = FontStyle.Bold };
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, 70f, 600f, 70f), "PROTOTYPE FPS", title);
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
 
         if (loadoutOpen)
             DrawLoadout();
@@ -88,24 +89,30 @@ public sealed class GameMenu : MonoBehaviour
 
     private void DrawLoadout()
     {
-        float panelWidth = Mathf.Min(700f, Screen.width - 30f);
+        float panelWidth = Mathf.Min(900f, Screen.width - 30f);
         float startX = (Screen.width - panelWidth) * 0.5f;
-        float startY = Mathf.Clamp(Screen.height * 0.29f, 165f, 220f);
+        float startY = Mathf.Clamp(Screen.height * 0.36f, 245f, 285f);
         float availableHeight = Mathf.Max(180f, Screen.height - startY - 120f);
         float rowHeight = Mathf.Clamp(availableHeight / 4f, 42f, 58f);
         float labelWidth = Mathf.Clamp(panelWidth * 0.14f, 65f, 90f);
         float buttonGap = 5f;
         GUIStyle optionStyle = new GUIStyle(GUI.skin.button) { fontSize = Screen.width < 800 ? 10 : 12, wordWrap = true };
 
-        GUI.Label(new Rect(Screen.width * 0.5f - 250f, startY - 48f, 500f, 38f), "ACTIVE LOADOUT", CenteredStyle(Screen.height < 650 ? 21 : 26));
+        GUI.Label(new Rect(Screen.width * 0.5f - 250f, startY - 48f, 500f, 38f), $"{weapons.CurrentClass.ToString().ToUpper()} LOADOUT", CenteredStyle(Screen.height < 650 ? 21 : 26));
 
-        string[] classNames = { "SOLDIER", "TANK", "ENGINEER", "SNIPER" };
+        string[] classNames = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN" };
         float classWidth = panelWidth / classNames.Length;
+        Rect classPanel = new Rect(startX - 8f, startY - 132f, panelWidth + 16f, 76f);
+        GUI.color = new Color(0.04f, 0.07f, 0.09f, 0.95f);
+        GUI.DrawTexture(classPanel, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUI.Label(new Rect(startX, startY - 160f, panelWidth, 28f), "SELECT CLASS", CenteredStyle(20));
+        GUIStyle classStyle = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
         for (int classIndex = 0; classIndex < classNames.Length; classIndex++)
         {
             bool active = (int)weapons.CurrentClass == classIndex;
             GUI.backgroundColor = active ? new Color(0.2f, 0.75f, 0.3f) : new Color(0.16f, 0.2f, 0.23f);
-            if (GUI.Button(new Rect(startX + classIndex * classWidth, startY - 84f, classWidth - 5f, 34f), classNames[classIndex]))
+            if (GUI.Button(new Rect(startX + classIndex * classWidth + 3f, startY - 122f, classWidth - 7f, 54f), classNames[classIndex], classStyle))
                 weapons.SetPlayerClass((SimpleRifle.PlayerClass)classIndex);
         }
         GUI.backgroundColor = Color.white;

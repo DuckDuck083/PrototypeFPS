@@ -2,6 +2,7 @@ using UnityEngine;
 
 public sealed class TrainingTarget : MonoBehaviour, IDamageable
 {
+    public enum EnemyArchetype { Normal, Handgun, Rifle, Sniper, Knife, Demolition, Tank }
     [SerializeField] private bool followsPlayer;
     [SerializeField, Min(1f)] private float maximumHealth = 60f;
     [SerializeField, Min(0f)] private float moveSpeed = 2.3f;
@@ -20,6 +21,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private float respawnTime;
     private bool dead;
     public bool IsAlive => !dead;
+    public bool IsHostile => followsPlayer;
+    private WaveManager waveManager;
+    private EnemyArchetype archetype;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -35,6 +39,22 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         usesRangedWeapon = true;
         usesRifle = rifle;
         attackInterval = rifle ? 0.32f : 0.85f;
+    }
+
+    public void ConfigureWave(WaveManager manager, EnemyArchetype enemyType)
+    {
+        waveManager = manager;
+        archetype = enemyType;
+        usesRangedWeapon = enemyType == EnemyArchetype.Handgun || enemyType == EnemyArchetype.Rifle
+            || enemyType == EnemyArchetype.Sniper || enemyType == EnemyArchetype.Demolition || enemyType == EnemyArchetype.Tank;
+        usesRifle = enemyType == EnemyArchetype.Rifle || enemyType == EnemyArchetype.Tank;
+        attackInterval = enemyType == EnemyArchetype.Sniper ? 2.5f
+            : enemyType == EnemyArchetype.Demolition ? 1.7f
+            : enemyType == EnemyArchetype.Tank ? 0.16f
+            : enemyType == EnemyArchetype.Rifle ? 0.32f
+            : enemyType == EnemyArchetype.Handgun ? 0.85f
+            : enemyType == EnemyArchetype.Knife ? 0.55f
+            : 1f;
     }
 
     private void Awake()
@@ -62,7 +82,11 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         offset.y = 0f;
         float distance = offset.magnitude;
 
-        float desiredRange = usesRangedWeapon ? (usesRifle ? 14f : 10f) : 1.35f;
+        float desiredRange = archetype == EnemyArchetype.Sniper ? 30f
+            : archetype == EnemyArchetype.Demolition ? 18f
+            : archetype == EnemyArchetype.Tank ? 16f
+            : usesRangedWeapon ? (usesRifle ? 14f : 10f)
+            : archetype == EnemyArchetype.Knife ? 1.7f : 1.35f;
         if (distance > desiredRange)
         {
             Vector3 direction = offset.normalized;
@@ -73,7 +97,10 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         {
             if (!usesRangedWeapon || HasLineOfSight())
             {
-                player.TakeDamage(attackDamage, transform.position);
+                if (archetype == EnemyArchetype.Demolition)
+                    player.TakeExplosiveDamage(attackDamage, transform.position);
+                else
+                    player.TakeDamage(attackDamage, transform.position);
                 if (usesRangedWeapon) DrawEnemyTracer();
             }
             nextAttackTime = Time.time + attackInterval;
@@ -97,10 +124,20 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
 
     private void DrawEnemyTracer()
     {
+        if (archetype == EnemyArchetype.Demolition)
+        {
+            GameObject blast = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            blast.name = "Enemy Grenade Blast";
+            blast.transform.position = player.transform.position + Vector3.up;
+            blast.transform.localScale = Vector3.one * 2.4f;
+            Destroy(blast.GetComponent<Collider>());
+            blast.GetComponent<Renderer>().material.color = new Color(1f, 0.2f, 0.03f);
+            Destroy(blast, 0.12f);
+        }
         GameObject tracer = new GameObject("Enemy Bullet Tracer");
         LineRenderer line = tracer.AddComponent<LineRenderer>();
         line.positionCount = 2;
-        line.startWidth = 0.018f;
+        line.startWidth = archetype == EnemyArchetype.Tank ? 0.035f : 0.018f;
         line.endWidth = 0.004f;
         line.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
         line.startColor = new Color(0.35f, 1f, 0.3f, 0.9f);
@@ -124,6 +161,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             RemoveBulletHoles();
             foreach (Renderer targetRenderer in renderers)
                 targetRenderer.enabled = false;
+            if (waveManager != null)
+                waveManager.NotifyEnemyDefeated(this);
         }
     }
 
@@ -139,6 +178,11 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
 
     private void Respawn()
     {
+        if (waveManager != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
         transform.position = spawnPosition;
         health = maximumHealth;
         dead = false;

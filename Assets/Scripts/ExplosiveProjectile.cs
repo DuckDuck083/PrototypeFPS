@@ -84,7 +84,7 @@ public sealed class ExplosiveProjectile : MonoBehaviour
             if (dealtDamage > 1f)
             {
                 if (damageable is PlayerVitals playerVitals)
-                    playerVitals.TakeDamage(dealtDamage, transform.position);
+                    playerVitals.TakeExplosiveDamage(dealtDamage, transform.position);
                 else
                     damageable.TakeDamage(dealtDamage);
                 totalDamage += dealtDamage;

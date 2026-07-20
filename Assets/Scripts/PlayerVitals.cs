@@ -12,6 +12,15 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     public float Stamina { get; private set; }
     public bool CanSprint => Stamina > 0.1f;
 
+    public void ApplyClassStats(SimpleRifle.PlayerClass playerClass)
+    {
+        maximumHealth = playerClass == SimpleRifle.PlayerClass.Soldier ? 120f
+            : playerClass == SimpleRifle.PlayerClass.Tank ? 250f
+            : playerClass == SimpleRifle.PlayerClass.Demoman ? 130f
+            : 100f;
+        Health = maximumHealth;
+    }
+
     private float lastStaminaUseTime;
     private float damageFlash;
     private float invulnerableUntil;
@@ -73,6 +82,14 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         lastDamageSource = sourcePosition;
         damageDirectionUntil = Time.time + 1.15f;
         TakeDamage(amount);
+    }
+
+    public void TakeExplosiveDamage(float amount, Vector3 sourcePosition)
+    {
+        SimpleRifle weapons = GetComponent<SimpleRifle>();
+        if (weapons != null && weapons.CurrentClass == SimpleRifle.PlayerClass.Demoman)
+            amount *= 0.55f;
+        TakeDamage(amount, sourcePosition);
     }
 
     public bool Heal(float amount)

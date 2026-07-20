@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 
 public sealed class SimpleRifle : MonoBehaviour
 {
-    public enum PlayerClass { Soldier, Tank, Engineer, Sniper }
+    public enum PlayerClass { Soldier, Tank, Engineer, Sniper, Demoman }
     private enum WeaponType { Rifle, Handgun, Melee, Sniper }
 
     [Header("References")]
@@ -51,7 +51,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private static readonly string[][] SlotWeaponNames =
     {
         new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER", "SNIPER RIFLE" },
-        new[] { "RIOT SHIELD", "HANDGUN", "REVOLVER", "MEDPACK", "SHOTGUN", "TURRET BUILDER" },
+        new[] { "RIOT SHIELD", "HANDGUN", "REVOLVER", "MEDPACK", "SHOTGUN", "TURRET BUILDER", "STICKYBOMB LAUNCHER" },
         new[] { "BATON", "FISTS", "KNIFE", "SCYTHE", "AXE", "WRENCH" },
         new[] { "SNIPER RIFLE", "FRAG GRENADE", "SMOKE GRENADE", "PROXIMITY MINE", "VAMP PISTOL" }
     };
@@ -92,7 +92,8 @@ public sealed class SimpleRifle : MonoBehaviour
     public bool IsShieldBlocking => currentSlot == 1 && slotSelections[1] == 0
         && attackAction.IsPressed()
         && !isReloading;
-    public float MovementMultiplier => currentSlot == 0 && slotSelections[0] == 3 && attackAction.IsPressed() ? 0.62f : 1f;
+    public float MovementMultiplier => (CurrentClass == PlayerClass.Tank ? 0.68f : 1f)
+        * (currentSlot == 0 && slotSelections[0] == 3 && attackAction.IsPressed() ? 0.62f : 1f);
     private int CurrentAmmo => currentWeapon == WeaponType.Rifle ? rifleAmmo : currentWeapon == WeaponType.Handgun ? handgunAmmo : sniperAmmo;
     private int CurrentReserve => currentWeapon == WeaponType.Rifle ? rifleReserveAmmo : currentWeapon == WeaponType.Handgun ? handgunReserveAmmo : sniperReserveAmmo;
     private int CurrentMagazineSize => currentWeapon == WeaponType.Rifle ? rifleMagazineSize : currentWeapon == WeaponType.Handgun ? handgunMagazineSize : sniperMagazineSize;
@@ -161,7 +162,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (currentSlot == 2 && slotSelections[2] == 3 && aimAction.WasPressedThisFrame() && Time.time >= nextDashTime)
             ScytheDash();
 
-        if (currentSlot == 0 && slotSelections[0] == 5 && aimAction.WasPressedThisFrame())
+        if (((currentSlot == 0 && slotSelections[0] == 5) || (currentSlot == 1 && slotSelections[1] == 6)) && aimAction.WasPressedThisFrame())
             DetonateStickies();
 
         if (IsSniperRifleEquipped && !isReloading && aimAction.WasPressedThisFrame())
@@ -201,8 +202,8 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         else if (slotIndex == 1)
         {
-            int[] magazines = { 0, 12, 6, 3, 8, 0 };
-            int[] reserves = { 0, 48, 30, 0, 32, 0 };
+            int[] magazines = { 0, 12, 6, 3, 8, 0, 8 };
+            int[] reserves = { 0, 48, 30, 0, 32, 0, 24 };
             handgunMagazineSize = Mathf.Max(1, magazines[weaponIndex]);
             handgunAmmo = magazines[weaponIndex];
             handgunReserveAmmo = reserves[weaponIndex];
@@ -248,7 +249,8 @@ public sealed class SimpleRifle : MonoBehaviour
         new[] { new[] { 1, 0 }, new[] { 1, 4 }, new[] { 0, 3 }, new[] { 1 } },
         new[] { new[] { 3 }, new[] { 0 }, new[] { 1, 4, 3 }, new[] { 2, 3 } },
         new[] { new[] { 2 }, new[] { 5 }, new[] { 5, 3 }, new[] { 3 } },
-        new[] { new[] { 6 }, new[] { 2 }, new[] { 2, 3 }, new[] { 4 } }
+        new[] { new[] { 6 }, new[] { 2 }, new[] { 2, 3 }, new[] { 4 } },
+        new[] { new[] { 4 }, new[] { 6 }, new[] { 0, 3 }, new[] { 3 } }
     };
 
     public int GetClassOptionCount(int slotIndex) => ClassLoadouts[(int)CurrentClass][slotIndex].Length;
@@ -259,6 +261,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (CurrentClass == PlayerClass.Engineer && playerClass != PlayerClass.Engineer && activeTurret != null)
             Destroy(activeTurret.gameObject);
         CurrentClass = playerClass;
+        GetComponent<PlayerVitals>().ApplyClassStats(CurrentClass);
         for (int slot = 0; slot < 4; slot++)
         {
             int[] allowed = ClassLoadouts[(int)CurrentClass][slot];
@@ -453,6 +456,7 @@ public sealed class SimpleRifle : MonoBehaviour
             }
             else if (option == 4 && attackAction.WasPressedThisFrame()) FireHitscan(12f, 0.62f, 12, IsAiming ? 0.075f : 0.12f, false);
             else if (option == 5 && attackAction.WasPressedThisFrame()) PlaceTurret();
+            else if (option == 6 && attackAction.WasPressedThisFrame()) LaunchStickyBomb();
         }
         else if (currentSlot == 2 && attackAction.IsPressed())
         {
@@ -719,8 +723,8 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void LaunchStickyBomb()
     {
-        if (rifleAmmo <= 0) { TryReload(); return; }
-        rifleAmmo--;
+        if (CurrentAmmo <= 0) { TryReload(); return; }
+        SetCurrentAmmo(CurrentAmmo - 1);
         nextShotTime = Time.time + 0.55f;
         GameObject sticky = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         sticky.name = "Stickybomb";
@@ -909,6 +913,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (slotSelections[1] == 1) handgunReserveAmmo = Mathf.Min(96, handgunReserveAmmo + 12);
         else if (slotSelections[1] == 2) handgunReserveAmmo = Mathf.Min(60, handgunReserveAmmo + 6);
         else if (slotSelections[1] == 4) handgunReserveAmmo = Mathf.Min(64, handgunReserveAmmo + 8);
+        else if (slotSelections[1] == 6) handgunReserveAmmo = Mathf.Min(48, handgunReserveAmmo + 8);
 
         if (slotSelections[3] == 0) sniperReserveAmmo = Mathf.Min(24, sniperReserveAmmo + 5);
         else if (slotSelections[3] == 4)
@@ -925,7 +930,7 @@ public sealed class SimpleRifle : MonoBehaviour
     public void RestoreSpawnAmmo()
     {
         int[] primaryReserves = { 90, 12, 32, 200, 24, 24, 24 };
-        int[] secondaryReserves = { 0, 48, 30, 0, 32, 0 };
+        int[] secondaryReserves = { 0, 48, 30, 0, 32, 0, 24 };
         int[] specialistAmmo = { 1, 4, 3, 2, 10 };
         rifleAmmo = rifleMagazineSize;
         rifleReserveAmmo = primaryReserves[slotSelections[0]];
@@ -940,7 +945,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private void TryReload()
     {
         bool reloadable = currentSlot == 0
-            || (currentSlot == 1 && (slotSelections[1] == 1 || slotSelections[1] == 2 || slotSelections[1] == 4))
+            || (currentSlot == 1 && (slotSelections[1] == 1 || slotSelections[1] == 2 || slotSelections[1] == 4 || slotSelections[1] == 6))
             || (currentSlot == 3 && slotSelections[3] == 0);
         if (reloadable && !isReloading && CurrentAmmo < CurrentMagazineSize && CurrentReserve > 0)
             StartCoroutine(Reload());
@@ -1108,7 +1113,11 @@ public sealed class SimpleRifle : MonoBehaviour
     private void OnGUI()
     {
         bool scoped = IsSniperRifleEquipped && IsAiming;
-        if (scoped) DrawSniperScope();
+        if (scoped)
+        {
+            CreateScopeMask();
+            DrawSniperScope();
+        }
         GUIStyle centered = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
         centered.normal.textColor = Color.white;
         if (!scoped) GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
@@ -1123,7 +1132,7 @@ public sealed class SimpleRifle : MonoBehaviour
         GUI.Label(new Rect(Screen.width - 290f, Screen.height - 84f, 255f, 40f), ammoText, centered);
         GUIStyle help = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = 13 };
         help.normal.textColor = new Color(0.75f, 0.82f, 0.88f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, 12f, 600f, 28f), "[1] Rocket Launcher   [2] Riot Shield   [3] Baton   [4] Grenade    R Reload", help);
+        GUI.Label(new Rect(Screen.width * 0.5f - 390f, 12f, 780f, 28f), $"{CurrentClass.ToString().ToUpper()}   [1] {GetLoadoutSlotName(0)}   [2] {GetLoadoutSlotName(1)}   [3] {GetLoadoutSlotName(2)}   [4] {GetLoadoutSlotName(3)}", help);
 
         if (Time.time < hitMarkerUntil)
             DrawHitMarker(centered);

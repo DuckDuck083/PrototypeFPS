@@ -36,7 +36,7 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
         float bestDistance = Range;
         foreach (TrainingTarget candidate in FindObjectsByType<TrainingTarget>())
         {
-            if (!candidate.IsAlive) continue;
+            if (!candidate.IsAlive || !candidate.IsHostile) continue;
             float distance = Vector3.Distance(transform.position, candidate.transform.position);
             if (distance >= bestDistance) continue;
             Vector3 targetPoint = candidate.transform.position + Vector3.up * 1.25f;

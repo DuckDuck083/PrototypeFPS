@@ -68,6 +68,20 @@ public sealed class FirstPersonController : MonoBehaviour
         Cursor.visible = true;
     }
 
+    public void RestoreControls()
+    {
+        if (characterController != null) characterController.enabled = true;
+        inputActions.FindActionMap("Player", true).Enable();
+        moveAction?.Enable();
+        lookAction?.Enable();
+        jumpAction?.Enable();
+        sprintAction?.Enable();
+        crouchAction?.Enable();
+        verticalVelocity = -2f;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
     private void Update()
     {
         HandleLook();
