@@ -88,28 +88,36 @@ public sealed class GameMenu : MonoBehaviour
 
     private void DrawLoadout()
     {
-        GUI.Label(new Rect(Screen.width * 0.5f - 250f, 155f, 500f, 38f), "ACTIVE LOADOUT", CenteredStyle(26));
-        float startX = Screen.width * 0.5f - 310f;
-        float startY = 215f;
+        float panelWidth = Mathf.Min(700f, Screen.width - 30f);
+        float startX = (Screen.width - panelWidth) * 0.5f;
+        float startY = Mathf.Clamp(Screen.height * 0.25f, 125f, 190f);
+        float availableHeight = Mathf.Max(180f, Screen.height - startY - 120f);
+        float rowHeight = Mathf.Clamp(availableHeight / 4f, 42f, 58f);
+        float labelWidth = Mathf.Clamp(panelWidth * 0.14f, 65f, 90f);
+        float buttonGap = 6f;
+        float buttonWidth = (panelWidth - labelWidth - buttonGap * 4f) / 4f;
+        GUIStyle optionStyle = new GUIStyle(GUI.skin.button) { fontSize = Screen.width < 800 ? 10 : 12, wordWrap = true };
+
+        GUI.Label(new Rect(Screen.width * 0.5f - 250f, startY - 48f, 500f, 38f), "ACTIVE LOADOUT", CenteredStyle(Screen.height < 650 ? 21 : 26));
 
         for (int slot = 0; slot < 4; slot++)
         {
-            GUI.Label(new Rect(startX, startY + slot * 58f, 90f, 42f), $"SLOT {slot + 1}", CenteredStyle(17));
+            float rowY = startY + slot * rowHeight;
+            GUI.Label(new Rect(startX, rowY, labelWidth, rowHeight - 8f), $"SLOT {slot + 1}", CenteredStyle(15));
             for (int weapon = 0; weapon < 4; weapon++)
             {
                 bool selected = weapons.IsLoadoutSelection(slot, weapon);
                 GUI.backgroundColor = selected ? new Color(0.15f, 0.7f, 1f) : new Color(0.2f, 0.25f, 0.3f);
-                Rect button = new Rect(startX + 100f + weapon * 130f, startY + slot * 58f, 120f, 42f);
+                Rect button = new Rect(startX + labelWidth + buttonGap + weapon * (buttonWidth + buttonGap), rowY, buttonWidth, rowHeight - 8f);
                 string optionName = weapons.GetLoadoutOptionName(slot, weapon);
-                if (GUI.Button(button, selected ? $"✓ {optionName}" : optionName))
+                if (GUI.Button(button, selected ? $"✓ {optionName}" : optionName, optionStyle))
                     weapons.SetLoadoutSlot(slot, weapon);
             }
             GUI.backgroundColor = Color.white;
             GUI.color = Color.white;
         }
 
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, 465f, 600f, 30f), "Click a weapon in each row. Blue buttons are equipped. Duplicates are allowed.", CenteredStyle(15));
-        if (GUI.Button(new Rect(Screen.width * 0.5f - 120f, 510f, 240f, 45f), "BACK")) loadoutOpen = false;
+        if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "← BACK")) loadoutOpen = false;
     }
 
     private static GUIStyle CenteredStyle(int size)
