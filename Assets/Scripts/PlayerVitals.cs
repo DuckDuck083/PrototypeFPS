@@ -18,6 +18,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     private float respawnAt;
     private bool isDead;
     private Vector3 spawnPosition;
+    private Vector3 lastDamageSource;
+    private float damageDirectionUntil;
 
     private void Awake()
     {
@@ -64,6 +66,13 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         damageFlash = Mathf.Clamp01(damageFlash + amount / 35f);
         if (Health <= 0f)
             BeginRespawn();
+    }
+
+    public void TakeDamage(float amount, Vector3 sourcePosition)
+    {
+        lastDamageSource = sourcePosition;
+        damageDirectionUntil = Time.time + 1.15f;
+        TakeDamage(amount);
     }
 
     public bool Heal(float amount)
@@ -125,6 +134,10 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
             GUI.color = Color.white;
         }
 
+
+        if (Time.time < damageDirectionUntil && Camera.main != null)
+            DrawDamageDirection();
+
         GUI.color = new Color(0f, 0f, 0f, 0.68f);
         GUI.DrawTexture(new Rect(15f, Screen.height - 92f, 245f, 72f), Texture2D.whiteTexture);
         GUI.color = Color.white;
@@ -142,5 +155,28 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         GUI.color = Color.white;
         GUI.Label(rect, label, new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold });
         GUI.color = oldColor;
+    }
+
+    private void DrawDamageDirection()
+    {
+        Camera view = Camera.main;
+        Vector3 flatForward = view.transform.forward;
+        flatForward.y = 0f;
+        Vector3 toSource = lastDamageSource - transform.position;
+        toSource.y = 0f;
+        float angle = Vector3.SignedAngle(flatForward.normalized, toSource.normalized, Vector3.up);
+        float radians = angle * Mathf.Deg2Rad;
+        Vector2 center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+        Vector2 offset = new Vector2(Mathf.Sin(radians) * Screen.width * 0.28f, -Mathf.Cos(radians) * Screen.height * 0.3f);
+        Vector2 markerCenter = center + offset;
+        float alpha = Mathf.Clamp01((damageDirectionUntil - Time.time) / 0.35f);
+        Matrix4x4 oldMatrix = GUI.matrix;
+        GUIUtility.RotateAroundPivot(angle, markerCenter);
+        GUI.color = new Color(1f, 0.08f, 0.04f, alpha);
+        GUI.DrawTexture(new Rect(markerCenter.x - 22f, markerCenter.y - 4f, 44f, 8f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(markerCenter.x - 22f, markerCenter.y - 4f, 8f, 20f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(markerCenter.x + 14f, markerCenter.y - 4f, 8f, 20f), Texture2D.whiteTexture);
+        GUI.matrix = oldMatrix;
+        GUI.color = Color.white;
     }
 }

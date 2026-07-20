@@ -83,7 +83,10 @@ public sealed class ExplosiveProjectile : MonoBehaviour
             float dealtDamage = damage * Mathf.Clamp01(1f - distance / radius);
             if (dealtDamage > 1f)
             {
-                damageable.TakeDamage(dealtDamage);
+                if (damageable is PlayerVitals playerVitals)
+                    playerVitals.TakeDamage(dealtDamage, transform.position);
+                else
+                    damageable.TakeDamage(dealtDamage);
                 totalDamage += dealtDamage;
             }
         }

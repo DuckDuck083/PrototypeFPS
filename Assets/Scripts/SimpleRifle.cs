@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 
 public sealed class SimpleRifle : MonoBehaviour
 {
+    public enum PlayerClass { Soldier, Tank, Engineer, Sniper }
     private enum WeaponType { Rifle, Handgun, Melee, Sniper }
 
     [Header("References")]
@@ -49,9 +50,9 @@ public sealed class SimpleRifle : MonoBehaviour
     private int currentSlot;
     private static readonly string[][] SlotWeaponNames =
     {
-        new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER" },
-        new[] { "RIOT SHIELD", "HANDGUN", "REVOLVER", "MEDPACK" },
-        new[] { "BATON", "FISTS", "KNIFE", "SCYTHE", "AXE" },
+        new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER", "SNIPER RIFLE" },
+        new[] { "RIOT SHIELD", "HANDGUN", "REVOLVER", "MEDPACK", "SHOTGUN", "TURRET BUILDER" },
+        new[] { "BATON", "FISTS", "KNIFE", "SCYTHE", "AXE", "WRENCH" },
         new[] { "SNIPER RIFLE", "FRAG GRENADE", "SMOKE GRENADE", "PROXIMITY MINE", "VAMP PISTOL" }
     };
     private int rifleAmmo;
@@ -75,6 +76,9 @@ public sealed class SimpleRifle : MonoBehaviour
     private const int MaximumGrenades = 8;
     private float nextDashTime;
     private float dashAnimationUntil;
+    private float nextTurretTime;
+    private EngineerTurret activeTurret;
+    public PlayerClass CurrentClass { get; private set; } = PlayerClass.Soldier;
     private readonly System.Collections.Generic.List<ExplosiveProjectile> activeStickies = new System.Collections.Generic.List<ExplosiveProjectile>();
     private float recoilPitch;
     private float recoilYaw;
@@ -83,7 +87,8 @@ public sealed class SimpleRifle : MonoBehaviour
     private const float FalloffEnd = 58f;
     private const float MinimumFalloffMultiplier = 0.35f;
 
-    private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (currentWeapon == WeaponType.Sniper ? sniperScopeToggled : aimAction.IsPressed());
+    private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (IsSniperRifleEquipped ? sniperScopeToggled : aimAction.IsPressed());
+    private bool IsSniperRifleEquipped => (currentSlot == 3 && slotSelections[3] == 0) || (currentSlot == 0 && slotSelections[0] == 6);
     public bool IsShieldBlocking => currentSlot == 1 && slotSelections[1] == 0
         && attackAction.IsPressed()
         && !isReloading;
@@ -112,7 +117,7 @@ public sealed class SimpleRifle : MonoBehaviour
         CreateWeaponModels();
         CreateShotEffects();
         CreateScopeMask();
-        SelectSlot(0);
+        SetPlayerClass(CurrentClass);
     }
 
     private void OnEnable()
@@ -159,7 +164,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (currentSlot == 0 && slotSelections[0] == 5 && aimAction.WasPressedThisFrame())
             DetonateStickies();
 
-        if (currentSlot == 3 && slotSelections[3] == 0 && !isReloading && aimAction.WasPressedThisFrame())
+        if (IsSniperRifleEquipped && !isReloading && aimAction.WasPressedThisFrame())
             sniperScopeToggled = !sniperScopeToggled;
 
         if (!isReloading)
@@ -188,16 +193,16 @@ public sealed class SimpleRifle : MonoBehaviour
         slotSelections[slotIndex] = weaponIndex;
         if (slotIndex == 0)
         {
-            int[] magazines = { 30, 4, 8, 100, 6, 8 };
-            int[] reserves = { 90, 12, 32, 200, 24, 24 };
+            int[] magazines = { 30, 4, 8, 100, 6, 8, 1 };
+            int[] reserves = { 90, 12, 32, 200, 24, 24, 24 };
             rifleMagazineSize = magazines[weaponIndex];
             rifleAmmo = rifleMagazineSize;
             rifleReserveAmmo = reserves[weaponIndex];
         }
         else if (slotIndex == 1)
         {
-            int[] magazines = { 0, 12, 6, 3 };
-            int[] reserves = { 0, 48, 30, 0 };
+            int[] magazines = { 0, 12, 6, 3, 8, 0 };
+            int[] reserves = { 0, 48, 30, 0, 32, 0 };
             handgunMagazineSize = Mathf.Max(1, magazines[weaponIndex]);
             handgunAmmo = magazines[weaponIndex];
             handgunReserveAmmo = reserves[weaponIndex];
@@ -237,6 +242,31 @@ public sealed class SimpleRifle : MonoBehaviour
     }
 
     public int GetLoadoutOptionCount(int slotIndex) => slotIndex >= 0 && slotIndex < 4 ? SlotWeaponNames[slotIndex].Length : 0;
+
+    private static readonly int[][][] ClassLoadouts =
+    {
+        new[] { new[] { 1, 0 }, new[] { 1, 4 }, new[] { 0, 3 }, new[] { 1 } },
+        new[] { new[] { 3 }, new[] { 0 }, new[] { 1, 4, 3 }, new[] { 2, 3 } },
+        new[] { new[] { 2 }, new[] { 5 }, new[] { 5, 3 }, new[] { 3 } },
+        new[] { new[] { 6 }, new[] { 2 }, new[] { 2, 3 }, new[] { 4 } }
+    };
+
+    public int GetClassOptionCount(int slotIndex) => ClassLoadouts[(int)CurrentClass][slotIndex].Length;
+    public int GetClassOptionIndex(int slotIndex, int classOptionIndex) => ClassLoadouts[(int)CurrentClass][slotIndex][classOptionIndex];
+
+    public void SetPlayerClass(PlayerClass playerClass)
+    {
+        if (CurrentClass == PlayerClass.Engineer && playerClass != PlayerClass.Engineer && activeTurret != null)
+            Destroy(activeTurret.gameObject);
+        CurrentClass = playerClass;
+        for (int slot = 0; slot < 4; slot++)
+        {
+            int[] allowed = ClassLoadouts[(int)CurrentClass][slot];
+            if (System.Array.IndexOf(allowed, slotSelections[slot]) < 0)
+                SetLoadoutSlot(slot, allowed[0]);
+        }
+        SelectSlot(currentSlot);
+    }
 
     private void SelectSlot(int slotIndex)
     {
@@ -324,11 +354,17 @@ public sealed class SimpleRifle : MonoBehaviour
             AddPart(model, "Wide Muzzle", new Vector3(0f, 0f, 0.88f), new Vector3(0.3f, 0.3f, 0.22f), dark);
             AddPart(model, "Launcher Stock", new Vector3(0f, -0.02f, -0.2f), new Vector3(0.23f, 0.2f, 0.4f), dark);
         }
-        else if (slot == 0)
+        else if (slot == 0 && option == 5)
         {
             AddPart(model, "Sticky Canister", new Vector3(0f, -0.16f, 0.23f), new Vector3(0.4f, 0.28f, 0.38f), accent);
             AddPart(model, "Detonator Aerial", new Vector3(0.18f, 0.18f, 0.2f), new Vector3(0.035f, 0.3f, 0.035f), metal, -15f);
             AddPart(model, "Forked Muzzle", new Vector3(0f, 0f, 0.86f), new Vector3(0.35f, 0.12f, 0.22f), dark);
+        }
+        else if (slot == 0)
+        {
+            AddPart(model, "Long Barrel", new Vector3(0f, 0f, 0.82f), new Vector3(0.11f, 0.11f, 0.95f), dark);
+            AddPart(model, "Scope", new Vector3(0f, 0.16f, 0.28f), new Vector3(0.14f, 0.14f, 0.42f), metal);
+            AddPart(model, "Sniper Stock", new Vector3(0f, -0.02f, -0.22f), new Vector3(0.22f, 0.22f, 0.5f), accent);
         }
         else if (slot == 1 && option == 0)
         {
@@ -342,19 +378,34 @@ public sealed class SimpleRifle : MonoBehaviour
             AddPart(model, "Cylinder", new Vector3(0f, -0.01f, 0.22f), new Vector3(0.25f, 0.25f, 0.2f), metal, 90f);
             AddPart(model, "Hammer", new Vector3(0f, 0.12f, -0.08f), new Vector3(0.08f, 0.12f, 0.08f), dark, -20f);
         }
-        else if (slot == 1)
+        else if (slot == 1 && option == 3)
         {
             AddPart(model, "Medical Cross", new Vector3(0f, 0.01f, 0.05f), new Vector3(0.08f, 0.26f, 0.04f), accent);
             AddPart(model, "Medical Cross Bar", new Vector3(0f, 0.01f, 0.03f), new Vector3(0.25f, 0.08f, 0.04f), accent);
+        }
+        else if (slot == 1 && option == 4)
+        {
+            AddPart(model, "Pump", new Vector3(0f, -0.03f, 0.56f), new Vector3(0.22f, 0.18f, 0.28f), dark);
+            AddPart(model, "Shell Tube", new Vector3(0f, -0.1f, 0.45f), new Vector3(0.08f, 0.08f, 0.52f), accent);
+        }
+        else if (slot == 1)
+        {
+            AddPart(model, "Builder Screen", new Vector3(0f, 0.08f, 0.2f), new Vector3(0.3f, 0.2f, 0.08f), accent);
+            AddPart(model, "Antenna", new Vector3(0.15f, 0.24f, 0.18f), new Vector3(0.035f, 0.28f, 0.035f), metal, -12f);
         }
         else if (slot == 2 && option == 0) AddPart(model, "Guard", new Vector3(0f, -0.02f, 0.05f), new Vector3(0.32f, 0.06f, 0.08f), accent);
         else if (slot == 2 && option == 1) AddPart(model, "Knuckle Guard", new Vector3(0f, 0.04f, 0.12f), new Vector3(0.32f, 0.18f, 0.12f), metal);
         else if (slot == 2 && option == 2) AddPart(model, "Knife Guard", new Vector3(0f, -0.03f, 0.08f), new Vector3(0.28f, 0.05f, 0.08f), accent);
         else if (slot == 2 && option == 3) AddPart(model, "Scythe Blade", new Vector3(0.17f, 0.5f, 0.2f), new Vector3(0.42f, 0.06f, 0.12f), metal, 18f);
-        else if (slot == 2)
+        else if (slot == 2 && option == 4)
         {
             AddPart(model, "Axe Head", new Vector3(0.12f, 0.45f, 0.18f), new Vector3(0.42f, 0.28f, 0.1f), metal, 15f);
             AddPart(model, "Axe Edge", new Vector3(0.3f, 0.46f, 0.18f), new Vector3(0.12f, 0.36f, 0.07f), accent, 15f);
+        }
+        else if (slot == 2)
+        {
+            AddPart(model, "Wrench Jaw A", new Vector3(-0.12f, 0.43f, 0.18f), new Vector3(0.1f, 0.3f, 0.1f), metal, -20f);
+            AddPart(model, "Wrench Jaw B", new Vector3(0.12f, 0.43f, 0.18f), new Vector3(0.1f, 0.3f, 0.1f), metal, 20f);
         }
         else if (slot == 3 && option == 0)
         {
@@ -386,6 +437,7 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 3 && attackAction.IsPressed()) FireHitscan(10f, 0.065f, 1, 0.018f, false);
             else if (option == 4 && attackAction.WasPressedThisFrame()) LaunchBouncingGrenade();
             else if (option == 5 && attackAction.WasPressedThisFrame()) LaunchStickyBomb();
+            else if (option == 6) UpdateSniperCharge();
         }
         else if (currentSlot == 1)
         {
@@ -399,6 +451,8 @@ public sealed class SimpleRifle : MonoBehaviour
                     nextShotTime = Time.time + 3f;
                 }
             }
+            else if (option == 4 && attackAction.WasPressedThisFrame()) FireHitscan(12f, 0.62f, 12, IsAiming ? 0.075f : 0.12f, false);
+            else if (option == 5 && attackAction.WasPressedThisFrame()) PlaceTurret();
         }
         else if (currentSlot == 2 && attackAction.IsPressed())
         {
@@ -505,6 +559,24 @@ public sealed class SimpleRifle : MonoBehaviour
         explosive.Configure(120f, 5f, 20f, false, this, true);
     }
 
+    private void PlaceTurret()
+    {
+        if (activeTurret != null || Time.time < nextTurretTime) return;
+        nextTurretTime = Time.time + 10f;
+        GameObject turret = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        turret.name = "Engineer Turret";
+        turret.transform.position = transform.position + transform.forward * 2f + Vector3.up * 0.38f;
+        turret.transform.localScale = new Vector3(0.62f, 0.38f, 0.62f);
+        turret.GetComponent<Renderer>().material = CreateMaterial(new Color(0.1f, 0.28f, 0.34f));
+        Transform head = new GameObject("Tracking Head").transform;
+        head.SetParent(turret.transform, false);
+        head.localPosition = new Vector3(0f, 1.25f, 0f);
+        AddPart(head, "Gun Body", Vector3.zero, new Vector3(0.55f, 0.3f, 0.65f), CreateMaterial(new Color(0.12f, 0.14f, 0.16f)));
+        AddPart(head, "Barrel", new Vector3(0f, 0f, 0.62f), new Vector3(0.12f, 0.12f, 0.72f), CreateMaterial(new Color(0.04f, 0.05f, 0.06f)));
+        activeTurret = turret.AddComponent<EngineerTurret>();
+        activeTurret.Configure(head);
+    }
+
     private static string GetWeaponName(WeaponType weapon)
     {
         return weapon == WeaponType.Rifle ? "ROCKET LAUNCHER"
@@ -588,7 +660,7 @@ public sealed class SimpleRifle : MonoBehaviour
         Vector3 targetPosition = IsShieldBlocking ? shieldRaisedPosition : IsAiming ? adsPosition : currentRestPosition;
         currentModel.localPosition = Vector3.Lerp(currentModel.localPosition, targetPosition, 14f * Time.deltaTime);
         currentModel.localRotation = Quaternion.Slerp(currentModel.localRotation, Quaternion.Euler(-recoilPitch, recoilYaw, 0f), 18f * Time.deltaTime);
-        bool sniperScoped = currentSlot == 3 && slotSelections[3] == 0 && IsAiming;
+        bool sniperScoped = IsSniperRifleEquipped && IsAiming;
         float targetFov = sniperScoped ? 25f : IsAiming ? normalFieldOfView * 0.82f : normalFieldOfView;
         playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, targetFov, 12f * Time.deltaTime);
         SetCurrentModelVisible(!sniperScoped);
@@ -747,7 +819,8 @@ public sealed class SimpleRifle : MonoBehaviour
 
         bool aimedShot = IsAiming;
         float baseDelay = currentWeapon == WeaponType.Rifle ? 0.12f : currentWeapon == WeaponType.Handgun ? 0.28f : 1.1f;
-        float damage = currentWeapon == WeaponType.Rifle ? 25f : currentWeapon == WeaponType.Handgun ? 18f : Mathf.Lerp(70f, 160f, sniperChargeRatio);
+        bool sniperShot = IsSniperRifleEquipped;
+        float damage = sniperShot ? Mathf.Lerp(70f, 160f, sniperChargeRatio) : currentWeapon == WeaponType.Rifle ? 25f : currentWeapon == WeaponType.Handgun ? 18f : 70f;
         damage *= Random.Range(0.94f, 1.07f);
         if (aimedShot)
         {
@@ -758,9 +831,9 @@ public sealed class SimpleRifle : MonoBehaviour
         SetCurrentAmmo(CurrentAmmo - 1);
         nextShotTime = Time.time + baseDelay;
         currentModel.localPosition += Vector3.back * 0.055f;
-        gunshotAudio.pitch = currentWeapon == WeaponType.Rifle ? Random.Range(0.96f, 1.04f) : currentWeapon == WeaponType.Handgun ? Random.Range(1.15f, 1.22f) : Random.Range(0.72f, 0.78f);
-        gunshotAudio.PlayOneShot(gunshotClip, currentWeapon == WeaponType.Sniper ? 1f : currentWeapon == WeaponType.Rifle ? 0.7f : 0.55f);
-        ApplyRecoil(currentWeapon == WeaponType.Sniper ? 7f : currentWeapon == WeaponType.Handgun ? 3.8f : 2f, 0.8f);
+        gunshotAudio.pitch = sniperShot ? Random.Range(0.72f, 0.78f) : currentWeapon == WeaponType.Rifle ? Random.Range(0.96f, 1.04f) : Random.Range(1.15f, 1.22f);
+        gunshotAudio.PlayOneShot(gunshotClip, sniperShot ? 1f : currentWeapon == WeaponType.Rifle ? 0.7f : 0.55f);
+        ApplyRecoil(sniperShot ? 7f : currentWeapon == WeaponType.Handgun ? 3.8f : 2f, 0.8f);
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         Vector3 tracerEnd = ray.GetPoint(range);
@@ -770,7 +843,7 @@ public sealed class SimpleRifle : MonoBehaviour
             if (hit.rigidbody != null)
                 hit.rigidbody.AddForceAtPosition(ray.direction * hitForce, hit.point, ForceMode.Impulse);
 
-            ApplyDamage(hit, damage, currentSlot == 3 && slotSelections[3] == 0, 0f, currentWeapon == WeaponType.Sniper);
+            ApplyDamage(hit, damage, sniperShot, 0f, sniperShot);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
 
@@ -829,12 +902,13 @@ public sealed class SimpleRifle : MonoBehaviour
         int oldPrimary = rifleReserveAmmo;
         int oldSecondary = handgunReserveAmmo;
         int oldSpecial = sniperAmmo + sniperReserveAmmo;
-        int[] primaryAdds = { 30, 2, 8, 100, 6, 8 };
-        int[] primaryCaps = { 180, 12, 64, 400, 48, 48 };
+        int[] primaryAdds = { 30, 2, 8, 100, 6, 8, 5 };
+        int[] primaryCaps = { 180, 12, 64, 400, 48, 48, 24 };
         rifleReserveAmmo = Mathf.Min(primaryCaps[slotSelections[0]], rifleReserveAmmo + primaryAdds[slotSelections[0]]);
 
         if (slotSelections[1] == 1) handgunReserveAmmo = Mathf.Min(96, handgunReserveAmmo + 12);
         else if (slotSelections[1] == 2) handgunReserveAmmo = Mathf.Min(60, handgunReserveAmmo + 6);
+        else if (slotSelections[1] == 4) handgunReserveAmmo = Mathf.Min(64, handgunReserveAmmo + 8);
 
         if (slotSelections[3] == 0) sniperReserveAmmo = Mathf.Min(24, sniperReserveAmmo + 5);
         else if (slotSelections[3] == 4)
@@ -850,8 +924,8 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public void RestoreSpawnAmmo()
     {
-        int[] primaryReserves = { 90, 12, 32, 200, 24, 24 };
-        int[] secondaryReserves = { 0, 48, 30, 0 };
+        int[] primaryReserves = { 90, 12, 32, 200, 24, 24, 24 };
+        int[] secondaryReserves = { 0, 48, 30, 0, 32, 0 };
         int[] specialistAmmo = { 1, 4, 3, 2, 10 };
         rifleAmmo = rifleMagazineSize;
         rifleReserveAmmo = primaryReserves[slotSelections[0]];
@@ -866,7 +940,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private void TryReload()
     {
         bool reloadable = currentSlot == 0
-            || (currentSlot == 1 && (slotSelections[1] == 1 || slotSelections[1] == 2))
+            || (currentSlot == 1 && (slotSelections[1] == 1 || slotSelections[1] == 2 || slotSelections[1] == 4))
             || (currentSlot == 3 && slotSelections[3] == 0);
         if (reloadable && !isReloading && CurrentAmmo < CurrentMagazineSize && CurrentReserve > 0)
             StartCoroutine(Reload());
@@ -1033,13 +1107,13 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void OnGUI()
     {
-        bool scoped = currentSlot == 3 && slotSelections[3] == 0 && IsAiming;
+        bool scoped = IsSniperRifleEquipped && IsAiming;
         if (scoped) DrawSniperScope();
         GUIStyle centered = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
         centered.normal.textColor = Color.white;
         if (!scoped) GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
         string weaponName = SlotWeaponNames[currentSlot][slotSelections[currentSlot]];
-        bool hidesAmmo = currentSlot == 2 || (currentSlot == 1 && (slotSelections[1] == 0 || slotSelections[1] == 3));
+        bool hidesAmmo = currentSlot == 2 || (currentSlot == 1 && (slotSelections[1] == 0 || slotSelections[1] == 3 || slotSelections[1] == 5));
         string ammoText = hidesAmmo ? weaponName
             : currentWeapon == WeaponType.Sniper && slotSelections[3] != 0 ? $"{weaponName}  {sniperAmmo}"
             : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
@@ -1094,6 +1168,19 @@ public sealed class SimpleRifle : MonoBehaviour
             GUI.DrawTexture(new Rect(dashBar.x + 2f, dashBar.y + 2f, (dashBar.width - 4f) * ready, dashBar.height - 4f), Texture2D.whiteTexture);
             GUI.color = Color.white;
             GUI.Label(new Rect(dashBar.x, dashBar.y - 23f, dashBar.width, 22f), ready >= 1f ? "DASH READY [RMB]" : "DASH RECHARGING", help);
+        }
+
+        if (currentSlot == 1 && slotSelections[1] == 5)
+        {
+            float ready = activeTurret != null ? 0f : Mathf.Clamp01(1f - (nextTurretTime - Time.time) / 10f);
+            Rect turretBar = new Rect(Screen.width * 0.5f - 105f, Screen.height - 145f, 210f, 13f);
+            GUI.color = new Color(0f, 0f, 0f, 0.85f);
+            GUI.DrawTexture(turretBar, Texture2D.whiteTexture);
+            GUI.color = ready >= 1f ? new Color(0.2f, 1f, 0.65f) : new Color(0.15f, 0.6f, 0.9f);
+            GUI.DrawTexture(new Rect(turretBar.x + 2f, turretBar.y + 2f, (turretBar.width - 4f) * ready, turretBar.height - 4f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            string turretState = activeTurret != null ? "TURRET ACTIVE" : ready >= 1f ? "TURRET READY [LMB]" : "TURRET COOLDOWN";
+            GUI.Label(new Rect(turretBar.x, turretBar.y - 23f, turretBar.width, 22f), turretState, help);
         }
     }
 

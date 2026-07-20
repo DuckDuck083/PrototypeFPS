@@ -90,7 +90,7 @@ public sealed class GameMenu : MonoBehaviour
     {
         float panelWidth = Mathf.Min(700f, Screen.width - 30f);
         float startX = (Screen.width - panelWidth) * 0.5f;
-        float startY = Mathf.Clamp(Screen.height * 0.25f, 125f, 190f);
+        float startY = Mathf.Clamp(Screen.height * 0.29f, 165f, 220f);
         float availableHeight = Mathf.Max(180f, Screen.height - startY - 120f);
         float rowHeight = Mathf.Clamp(availableHeight / 4f, 42f, 58f);
         float labelWidth = Mathf.Clamp(panelWidth * 0.14f, 65f, 90f);
@@ -99,17 +99,29 @@ public sealed class GameMenu : MonoBehaviour
 
         GUI.Label(new Rect(Screen.width * 0.5f - 250f, startY - 48f, 500f, 38f), "ACTIVE LOADOUT", CenteredStyle(Screen.height < 650 ? 21 : 26));
 
+        string[] classNames = { "SOLDIER", "TANK", "ENGINEER", "SNIPER" };
+        float classWidth = panelWidth / classNames.Length;
+        for (int classIndex = 0; classIndex < classNames.Length; classIndex++)
+        {
+            bool active = (int)weapons.CurrentClass == classIndex;
+            GUI.backgroundColor = active ? new Color(0.2f, 0.75f, 0.3f) : new Color(0.16f, 0.2f, 0.23f);
+            if (GUI.Button(new Rect(startX + classIndex * classWidth, startY - 84f, classWidth - 5f, 34f), classNames[classIndex]))
+                weapons.SetPlayerClass((SimpleRifle.PlayerClass)classIndex);
+        }
+        GUI.backgroundColor = Color.white;
+
         for (int slot = 0; slot < 4; slot++)
         {
             float rowY = startY + slot * rowHeight;
             GUI.Label(new Rect(startX, rowY, labelWidth, rowHeight - 8f), $"SLOT {slot + 1}", CenteredStyle(15));
-            int optionCount = weapons.GetLoadoutOptionCount(slot);
+            int optionCount = weapons.GetClassOptionCount(slot);
             float buttonWidth = (panelWidth - labelWidth - buttonGap * optionCount) / optionCount;
-            for (int weapon = 0; weapon < optionCount; weapon++)
+            for (int classOption = 0; classOption < optionCount; classOption++)
             {
+                int weapon = weapons.GetClassOptionIndex(slot, classOption);
                 bool selected = weapons.IsLoadoutSelection(slot, weapon);
                 GUI.backgroundColor = selected ? new Color(0.15f, 0.7f, 1f) : new Color(0.2f, 0.25f, 0.3f);
-                Rect button = new Rect(startX + labelWidth + buttonGap + weapon * (buttonWidth + buttonGap), rowY, buttonWidth, rowHeight - 8f);
+                Rect button = new Rect(startX + labelWidth + buttonGap + classOption * (buttonWidth + buttonGap), rowY, buttonWidth, rowHeight - 8f);
                 string optionName = weapons.GetLoadoutOptionName(slot, weapon);
                 if (GUI.Button(button, selected ? $"✓ {optionName}" : optionName, optionStyle))
                     weapons.SetLoadoutSlot(slot, weapon);

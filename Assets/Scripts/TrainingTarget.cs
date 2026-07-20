@@ -19,6 +19,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private float nextAttackTime;
     private float respawnTime;
     private bool dead;
+    public bool IsAlive => !dead;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -72,7 +73,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         {
             if (!usesRangedWeapon || HasLineOfSight())
             {
-                player.TakeDamage(attackDamage);
+                player.TakeDamage(attackDamage, transform.position);
                 if (usesRangedWeapon) DrawEnemyTracer();
             }
             nextAttackTime = Time.time + attackInterval;
