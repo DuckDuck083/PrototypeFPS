@@ -5,24 +5,25 @@ public sealed class SmokeGrenade : MonoBehaviour
 {
     private IEnumerator Start()
     {
-        yield return new WaitForSeconds(1.1f);
+        yield return new WaitForSeconds(0.55f);
 
         ParticleSystem particles = gameObject.AddComponent<ParticleSystem>();
         ParticleSystem.MainModule main = particles.main;
-        main.duration = 7f;
+        main.duration = 10f;
         main.loop = true;
-        main.startLifetime = 4.5f;
-        main.startSpeed = 1.2f;
-        main.startSize = 3.5f;
-        main.startColor = new Color(0.28f, 0.31f, 0.34f, 0.92f);
-        main.maxParticles = 90;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(5.5f, 7.5f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.35f, 1.5f);
+        main.startSize = new ParticleSystem.MinMaxCurve(4.5f, 7f);
+        main.startColor = new Color(0.18f, 0.2f, 0.22f, 0.98f);
+        main.maxParticles = 240;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
 
         ParticleSystem.EmissionModule emission = particles.emission;
-        emission.rateOverTime = 16f;
+        emission.rateOverTime = 34f;
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 70) });
         ParticleSystem.ShapeModule shape = particles.shape;
         shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius = 2.2f;
+        shape.radius = 3.8f;
 
         ParticleSystemRenderer particleRenderer = particles.GetComponent<ParticleSystemRenderer>();
         Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
@@ -38,6 +39,6 @@ public sealed class SmokeGrenade : MonoBehaviour
             body.isKinematic = true;
         }
 
-        Destroy(gameObject, 8f);
+        Destroy(gameObject, 11f);
     }
 }

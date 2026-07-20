@@ -74,6 +74,12 @@ public sealed class SimpleRifle : MonoBehaviour
     private const int MaximumRocketReserve = 12;
     private const int MaximumGrenades = 8;
     private float nextDashTime;
+    private float recoilPitch;
+    private float recoilYaw;
+    private static Texture2D scopeMaskTexture;
+    private const float FalloffStart = 14f;
+    private const float FalloffEnd = 70f;
+    private const float MinimumFalloffMultiplier = 0.42f;
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (currentWeapon == WeaponType.Sniper ? sniperScopeToggled : aimAction.IsPressed());
     public bool IsShieldBlocking => currentSlot == 1 && slotSelections[1] == 0
@@ -103,6 +109,7 @@ public sealed class SimpleRifle : MonoBehaviour
         normalFieldOfView = playerCamera.fieldOfView;
         CreateWeaponModels();
         CreateShotEffects();
+        CreateScopeMask();
         SelectSlot(0);
     }
 
@@ -274,6 +281,68 @@ public sealed class SimpleRifle : MonoBehaviour
             AddPart(model, SlotWeaponNames[3][option], new Vector3(0f, 0f, 0.25f), new Vector3(option == 0 ? 0.16f : 0.28f, option == 0 ? 0.16f : 0.3f, length), option == 2 ? CreateMaterial(new Color(0.35f, 0.4f, 0.42f)) : metal);
             if (option == 0) AddPart(model, "Scope", new Vector3(0f, 0.15f, 0.3f), new Vector3(0.12f, 0.12f, 0.38f), dark);
         }
+        AddVariantDetails(model, slotIndex, option, dark, metal);
+    }
+
+    private static void AddVariantDetails(Transform model, int slot, int option, Material dark, Material metal)
+    {
+        Material accent = CreateMaterial(slot == 3 ? new Color(0.18f, 0.42f, 0.28f) : new Color(0.55f, 0.16f, 0.08f));
+        if (slot == 0 && option == 0)
+        {
+            AddPart(model, "Stock", new Vector3(0f, -0.01f, -0.18f), new Vector3(0.2f, 0.18f, 0.32f), dark);
+            AddPart(model, "Magazine", new Vector3(0f, -0.18f, 0.28f), new Vector3(0.13f, 0.3f, 0.18f), accent, -12f);
+            AddPart(model, "Carry Sight", new Vector3(0f, 0.14f, 0.32f), new Vector3(0.07f, 0.1f, 0.28f), dark);
+        }
+        else if (slot == 0 && option == 1)
+        {
+            AddPart(model, "Rear Vent", new Vector3(0f, 0f, -0.32f), new Vector3(0.34f, 0.34f, 0.18f), dark);
+            AddPart(model, "Warhead Cage", new Vector3(0f, 0f, 1.02f), new Vector3(0.38f, 0.38f, 0.12f), accent);
+            AddPart(model, "Top Rail", new Vector3(0f, 0.18f, 0.3f), new Vector3(0.08f, 0.06f, 0.72f), dark);
+        }
+        else if (slot == 0 && option == 2)
+        {
+            AddPart(model, "Pump", new Vector3(0f, -0.03f, 0.65f), new Vector3(0.22f, 0.18f, 0.3f), dark);
+            AddPart(model, "Shell Tube", new Vector3(0f, -0.11f, 0.55f), new Vector3(0.08f, 0.08f, 0.58f), accent);
+            AddPart(model, "Wood Stock", new Vector3(0f, -0.04f, -0.13f), new Vector3(0.19f, 0.2f, 0.38f), accent, -7f);
+        }
+        else if (slot == 0)
+        {
+            AddPart(model, "Barrel Cluster", new Vector3(0f, 0.02f, 0.9f), new Vector3(0.29f, 0.29f, 0.55f), dark);
+            AddPart(model, "Ammo Drum", new Vector3(0f, -0.22f, 0.25f), new Vector3(0.38f, 0.38f, 0.22f), accent, 90f);
+            AddPart(model, "Rear Motor", new Vector3(0f, 0f, -0.18f), new Vector3(0.3f, 0.3f, 0.28f), metal);
+        }
+        else if (slot == 1 && option == 0)
+        {
+            AddPart(model, "Viewport", new Vector3(0f, 0.23f, 0.15f), new Vector3(0.38f, 0.17f, 0.025f), dark);
+            AddPart(model, "Center Brace", new Vector3(0f, -0.12f, 0.14f), new Vector3(0.08f, 0.5f, 0.04f), accent);
+        }
+        else if (slot == 1 && option == 1)
+            AddPart(model, "Slide", new Vector3(0f, 0.07f, 0.27f), new Vector3(0.18f, 0.09f, 0.48f), metal);
+        else if (slot == 1 && option == 2)
+        {
+            AddPart(model, "Cylinder", new Vector3(0f, -0.01f, 0.22f), new Vector3(0.25f, 0.25f, 0.2f), metal, 90f);
+            AddPart(model, "Hammer", new Vector3(0f, 0.12f, -0.08f), new Vector3(0.08f, 0.12f, 0.08f), dark, -20f);
+        }
+        else if (slot == 1)
+        {
+            AddPart(model, "Medical Cross", new Vector3(0f, 0.01f, 0.05f), new Vector3(0.08f, 0.26f, 0.04f), accent);
+            AddPart(model, "Medical Cross Bar", new Vector3(0f, 0.01f, 0.03f), new Vector3(0.25f, 0.08f, 0.04f), accent);
+        }
+        else if (slot == 2 && option == 0) AddPart(model, "Guard", new Vector3(0f, -0.02f, 0.05f), new Vector3(0.32f, 0.06f, 0.08f), accent);
+        else if (slot == 2 && option == 1) AddPart(model, "Knuckle Guard", new Vector3(0f, 0.04f, 0.12f), new Vector3(0.32f, 0.18f, 0.12f), metal);
+        else if (slot == 2 && option == 2) AddPart(model, "Knife Guard", new Vector3(0f, -0.03f, 0.08f), new Vector3(0.28f, 0.05f, 0.08f), accent);
+        else if (slot == 2) AddPart(model, "Scythe Blade", new Vector3(0.17f, 0.5f, 0.2f), new Vector3(0.42f, 0.06f, 0.12f), metal, 18f);
+        else if (slot == 3 && option == 0)
+        {
+            AddPart(model, "Stock", new Vector3(0f, -0.02f, -0.35f), new Vector3(0.2f, 0.2f, 0.45f), dark);
+            AddPart(model, "Bipod", new Vector3(0f, -0.14f, 0.72f), new Vector3(0.32f, 0.06f, 0.08f), accent);
+            AddPart(model, "Muzzle Brake", new Vector3(0f, 0f, 1.02f), new Vector3(0.25f, 0.2f, 0.16f), dark);
+        }
+        else
+        {
+            AddPart(model, option == 3 ? "Mine Sensor" : "Safety Lever", new Vector3(0f, 0.22f, 0.25f), new Vector3(0.12f, 0.08f, 0.24f), option == 2 ? accent : dark, -12f);
+            AddPart(model, "Safety Pin", new Vector3(0.16f, 0.14f, 0.25f), new Vector3(0.05f, 0.2f, 0.05f), metal, 30f);
+        }
     }
 
     private void HandleCurrentWeapon()
@@ -283,7 +352,7 @@ public sealed class SimpleRifle : MonoBehaviour
         {
             if (option == 0 && attackAction.IsPressed()) FireHitscan(24f, 0.12f, 1, 0.002f, false);
             else if (option == 1 && attackAction.WasPressedThisFrame()) LaunchRocket();
-            else if (option == 2 && attackAction.WasPressedThisFrame()) FireHitscan(11f, 0.72f, 8, 0.07f, false);
+            else if (option == 2 && attackAction.WasPressedThisFrame()) FireHitscan(12f, 0.62f, 12, IsAiming ? 0.075f : 0.12f, false);
             else if (option == 3 && attackAction.IsPressed()) FireHitscan(10f, 0.065f, 1, 0.018f, false);
         }
         else if (currentSlot == 1)
@@ -333,11 +402,13 @@ public sealed class SimpleRifle : MonoBehaviour
             }
             tracerEnd = hit.point;
             CreateTracer(tracerEnd);
+            CreateBulletHole(hit.point, hit.normal, hit.transform);
             IDamageable target = hit.collider.GetComponentInParent<IDamageable>();
             if (target == null) continue;
             bool critical = headshotCriticals && hit.collider.gameObject.name == "Head";
             bool miniCritical = !critical && miniCrits && Random.value < miniCritChance;
-            float dealt = critical ? damage * 3f : miniCritical ? damage * 1.35f : damage;
+            float falloff = critical || miniCritical ? 1f : GetDamageFalloff(hit.distance);
+            float dealt = (critical ? damage * 3f : miniCritical ? damage * 1.35f : damage) * falloff;
             target.TakeDamage(dealt);
             lastDamageAmount = dealt;
             lastHitWasCritical = critical || miniCritical;
@@ -346,6 +417,20 @@ public sealed class SimpleRifle : MonoBehaviour
         if (registeredHit) hitMarkerUntil = Time.time + 0.35f;
         gunshotAudio.pitch = Random.Range(0.92f, 1.08f);
         gunshotAudio.PlayOneShot(gunshotClip, 0.65f);
+        CreateMuzzleFlash();
+        ApplyRecoil(pellets > 1 ? 5.2f : 1.8f, pellets > 1 ? 1.5f : 0.55f);
+    }
+
+    private static float GetDamageFalloff(float distance)
+    {
+        return Mathf.Lerp(1f, MinimumFalloffMultiplier, Mathf.InverseLerp(FalloffStart, FalloffEnd, distance));
+    }
+
+    private void ApplyRecoil(float pitch, float yaw)
+    {
+        float scale = IsAiming ? 0.55f : 1f;
+        recoilPitch = Mathf.Min(9f, recoilPitch + pitch * scale);
+        recoilYaw += Random.Range(-yaw, yaw) * scale;
     }
 
     private void ScytheDash()
@@ -451,12 +536,16 @@ public sealed class SimpleRifle : MonoBehaviour
             return;
         }
 
+        recoilPitch = Mathf.MoveTowards(recoilPitch, 0f, 18f * Time.deltaTime);
+        recoilYaw = Mathf.MoveTowards(recoilYaw, 0f, 12f * Time.deltaTime);
         Vector3 shieldRaisedPosition = new Vector3(0f, -0.08f, 0.38f);
-        Vector3 targetPosition = IsShieldBlocking ? shieldRaisedPosition : currentRestPosition;
+        Vector3 adsPosition = new Vector3(0f, -0.205f, currentRestPosition.z - 0.06f);
+        Vector3 targetPosition = IsShieldBlocking ? shieldRaisedPosition : IsAiming ? adsPosition : currentRestPosition;
         currentModel.localPosition = Vector3.Lerp(currentModel.localPosition, targetPosition, 14f * Time.deltaTime);
-        currentModel.localRotation = Quaternion.Slerp(currentModel.localRotation, Quaternion.identity, 18f * Time.deltaTime);
+        currentModel.localRotation = Quaternion.Slerp(currentModel.localRotation, Quaternion.Euler(-recoilPitch, recoilYaw, 0f), 18f * Time.deltaTime);
         bool sniperScoped = currentSlot == 3 && slotSelections[3] == 0 && IsAiming;
-        playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, sniperScoped ? 25f : normalFieldOfView, 12f * Time.deltaTime);
+        float targetFov = sniperScoped ? 25f : IsAiming ? normalFieldOfView * 0.82f : normalFieldOfView;
+        playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, targetFov, 12f * Time.deltaTime);
         SetCurrentModelVisible(!sniperScoped);
     }
 
@@ -573,6 +662,7 @@ public sealed class SimpleRifle : MonoBehaviour
         currentModel.localPosition += Vector3.back * 0.055f;
         gunshotAudio.pitch = currentWeapon == WeaponType.Rifle ? Random.Range(0.96f, 1.04f) : currentWeapon == WeaponType.Handgun ? Random.Range(1.15f, 1.22f) : Random.Range(0.72f, 0.78f);
         gunshotAudio.PlayOneShot(gunshotClip, currentWeapon == WeaponType.Sniper ? 1f : currentWeapon == WeaponType.Rifle ? 0.7f : 0.55f);
+        ApplyRecoil(currentWeapon == WeaponType.Sniper ? 7f : currentWeapon == WeaponType.Handgun ? 3.8f : 2f, 0.8f);
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         Vector3 tracerEnd = ray.GetPoint(range);
@@ -582,7 +672,7 @@ public sealed class SimpleRifle : MonoBehaviour
             if (hit.rigidbody != null)
                 hit.rigidbody.AddForceAtPosition(ray.direction * hitForce, hit.point, ForceMode.Impulse);
 
-            ApplyDamage(hit, damage, currentSlot == 3 && slotSelections[3] == 0);
+            ApplyDamage(hit, damage, currentSlot == 3 && slotSelections[3] == 0, 0f, currentWeapon == WeaponType.Sniper);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
 
@@ -606,14 +696,15 @@ public sealed class SimpleRifle : MonoBehaviour
         }
     }
 
-    private void ApplyDamage(RaycastHit hit, float baseDamage, bool allowHeadshotCritical = false, float randomCritChance = 0f)
+    private void ApplyDamage(RaycastHit hit, float baseDamage, bool allowHeadshotCritical = false, float randomCritChance = 0f, bool ignoresFalloff = false)
     {
         IDamageable damageable = hit.collider.GetComponentInParent<IDamageable>();
         if (damageable == null)
             return;
 
         bool critical = (allowHeadshotCritical && hit.collider.gameObject.name == "Head") || Random.value < randomCritChance;
-        float finalDamage = critical ? baseDamage * 3f : baseDamage;
+        float falloff = critical || ignoresFalloff ? 1f : GetDamageFalloff(hit.distance);
+        float finalDamage = (critical ? baseDamage * 3f : baseDamage) * falloff;
         damageable.TakeDamage(finalDamage);
 
         lastDamageAmount = finalDamage;
@@ -655,6 +746,21 @@ public sealed class SimpleRifle : MonoBehaviour
         }
 
         return rifleReserveAmmo > oldPrimary || handgunReserveAmmo > oldSecondary || sniperAmmo + sniperReserveAmmo > oldSpecial;
+    }
+
+    public void RestoreSpawnAmmo()
+    {
+        int[] primaryReserves = { 90, 12, 32, 200 };
+        int[] secondaryReserves = { 0, 48, 30, 0 };
+        int[] specialistAmmo = { 5, 4, 3, 2 };
+        rifleAmmo = rifleMagazineSize;
+        rifleReserveAmmo = primaryReserves[slotSelections[0]];
+        handgunAmmo = slotSelections[1] == 0 ? 0 : handgunMagazineSize;
+        handgunReserveAmmo = secondaryReserves[slotSelections[1]];
+        sniperAmmo = specialistAmmo[slotSelections[3]];
+        sniperReserveAmmo = slotSelections[3] == 0 ? 20 : 0;
+        isReloading = false;
+        reloadProgress = 0f;
     }
 
     private void TryReload()
@@ -801,6 +907,12 @@ public sealed class SimpleRifle : MonoBehaviour
         light.color = new Color(1f, 0.55f, 0.15f);
         light.intensity = 3f;
         light.range = 3f;
+        GameObject flare = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flare.name = "Muzzle Flare";
+        flare.transform.SetParent(flash.transform, false);
+        flare.transform.localScale = new Vector3(0.12f, 0.12f, 0.32f);
+        flare.GetComponent<Renderer>().material = tracerMaterial;
+        Destroy(flare.GetComponent<Collider>());
         Destroy(flash, 0.04f);
     }
 
@@ -810,7 +922,9 @@ public sealed class SimpleRifle : MonoBehaviour
         hole.name = "Bullet Hole";
         hole.transform.position = point + normal * 0.006f;
         hole.transform.rotation = Quaternion.LookRotation(normal);
-        hole.transform.localScale = new Vector3(0.075f, 0.075f, 0.006f);
+        float impactSize = Random.Range(0.045f, 0.075f);
+        hole.transform.localScale = new Vector3(impactSize, impactSize, 0.004f);
+        hole.transform.Rotate(0f, 0f, Random.Range(0f, 360f), Space.Self);
         hole.GetComponent<Renderer>().material = bulletHoleMaterial;
         Destroy(hole.GetComponent<Collider>());
         if (hitTransform != null) hole.transform.SetParent(hitTransform, true);
@@ -819,9 +933,11 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void OnGUI()
     {
+        bool scoped = currentSlot == 3 && slotSelections[3] == 0 && IsAiming;
+        if (scoped) DrawSniperScope();
         GUIStyle centered = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
         centered.normal.textColor = Color.white;
-        GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
+        if (!scoped) GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
         string weaponName = SlotWeaponNames[currentSlot][slotSelections[currentSlot]];
         bool hidesAmmo = currentSlot == 2 || (currentSlot == 1 && (slotSelections[1] == 0 || slotSelections[1] == 3));
         string ammoText = hidesAmmo ? weaponName
@@ -879,22 +995,44 @@ public sealed class SimpleRifle : MonoBehaviour
 
         GUIStyle damage = new GUIStyle(centered) { fontSize = 16, fontStyle = FontStyle.Bold };
         damage.normal.textColor = markerColor;
-        string label = lastHitWasCritical ? $"CRITICAL  {Mathf.RoundToInt(lastDamageAmount)}" : $"{Mathf.RoundToInt(lastDamageAmount)} DAMAGE";
+        string label = lastHitWasCritical ? $"CRITICAL HIT!!!  -{Mathf.RoundToInt(lastDamageAmount)}" : $"-{Mathf.RoundToInt(lastDamageAmount)}";
         GUI.Label(new Rect(Screen.width * 0.5f - 100f, Screen.height * 0.5f + 24f, 200f, 28f), label, damage);
     }
 
     private static void DrawSniperScope()
     {
-        float size = Mathf.Min(Screen.width, Screen.height) * 0.72f;
-        float left = (Screen.width - size) * 0.5f;
-        float top = (Screen.height - size) * 0.5f;
-        GUI.color = Color.black;
-        GUI.DrawTexture(new Rect(0f, 0f, left, Screen.height), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(left + size, 0f, Screen.width - left - size, Screen.height), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(left, 0f, size, top), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(left, top + size, size, Screen.height - top - size), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(Screen.width * 0.5f - 1f, top, 2f, size), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(left, Screen.height * 0.5f - 1f, size, 2f), Texture2D.whiteTexture);
+        float lensSize = Mathf.Min(Screen.width, Screen.height);
+        float lensLeft = (Screen.width - lensSize) * 0.5f;
         GUI.color = Color.white;
+        GUI.DrawTexture(new Rect(lensLeft, 0f, lensSize, lensSize), scopeMaskTexture, ScaleMode.StretchToFill, true);
+        GUI.color = Color.black;
+        if (lensLeft > 0f)
+        {
+            GUI.DrawTexture(new Rect(0f, 0f, lensLeft, Screen.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(lensLeft + lensSize, 0f, lensLeft, Screen.height), Texture2D.whiteTexture);
+        }
+        float radius = Mathf.Min(Screen.width, Screen.height) * 0.46f;
+        GUI.color = new Color(0f, 0f, 0f, 0.9f);
+        GUI.DrawTexture(new Rect(Screen.width * 0.5f - 1f, Screen.height * 0.5f - radius, 2f, radius * 2f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(Screen.width * 0.5f - radius, Screen.height * 0.5f - 1f, radius * 2f, 2f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+    }
+
+    private static void CreateScopeMask()
+    {
+        if (scopeMaskTexture != null) return;
+        const int size = 512;
+        scopeMaskTexture = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "Round Scope Mask" };
+        Color[] pixels = new Color[size * size];
+        Vector2 center = Vector2.one * (size * 0.5f);
+        float radius = size * 0.46f;
+        for (int y = 0; y < size; y++)
+        for (int x = 0; x < size; x++)
+        {
+            float edge = Mathf.InverseLerp(radius - 3f, radius + 3f, Vector2.Distance(new Vector2(x, y), center));
+            pixels[y * size + x] = new Color(0f, 0f, 0f, edge);
+        }
+        scopeMaskTexture.SetPixels(pixels);
+        scopeMaskTexture.Apply(false, true);
     }
 }

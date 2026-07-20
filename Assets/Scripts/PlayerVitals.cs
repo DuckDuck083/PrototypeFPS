@@ -99,7 +99,9 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
             target.ResetToSpawn();
 
         GetComponent<FirstPersonController>().enabled = true;
-        GetComponent<SimpleRifle>().enabled = true;
+        SimpleRifle weapons = GetComponent<SimpleRifle>();
+        weapons.RestoreSpawnAmmo();
+        weapons.enabled = true;
     }
 
     private void OnGUI()
