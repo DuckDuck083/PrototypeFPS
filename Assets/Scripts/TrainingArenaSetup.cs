@@ -47,11 +47,11 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         Material cover = CreateArenaMaterial(new Color(0.24f, 0.27f, 0.29f), 0.3f, 0.45f);
         Material accent = CreateArenaMaterial(new Color(0.12f, 0.32f, 0.42f), 0.2f, 0.55f);
 
-        CreateBlock("Foundation", new Vector3(0f, -1.55f, 0f), new Vector3(120f, 3f, 120f), wall);
-        CreateBlock("North Wall", new Vector3(0f, 3f, 58f), new Vector3(118f, 6f, 2f), wall);
-        CreateBlock("South Wall", new Vector3(0f, 3f, -58f), new Vector3(118f, 6f, 2f), wall);
-        CreateBlock("East Wall", new Vector3(58f, 3f, 0f), new Vector3(2f, 6f, 118f), wall);
-        CreateBlock("West Wall", new Vector3(-58f, 3f, 0f), new Vector3(2f, 6f, 118f), wall);
+        CreateBlock("Foundation", new Vector3(0f, -1.55f, 0f), new Vector3(170f, 3f, 170f), wall);
+        CreateBlock("North Wall", new Vector3(0f, 3f, 83f), new Vector3(168f, 6f, 2f), wall);
+        CreateBlock("South Wall", new Vector3(0f, 3f, -83f), new Vector3(168f, 6f, 2f), wall);
+        CreateBlock("East Wall", new Vector3(83f, 3f, 0f), new Vector3(2f, 6f, 168f), wall);
+        CreateBlock("West Wall", new Vector3(-83f, 3f, 0f), new Vector3(2f, 6f, 168f), wall);
 
         Vector3[] coverPositions =
         {
@@ -128,6 +128,32 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         helipad.GetComponent<Renderer>().material = cover;
         CreateBlock("Helipad H Vertical", new Vector3(-29f, 0.3f, 35f), new Vector3(1f, 0.08f, 8f), warning);
         CreateBlock("Helipad H Cross", new Vector3(-29f, 0.31f, 35f), new Vector3(6f, 0.08f, 1f), warning);
+
+        CreateBlock("North Hangar", new Vector3(48f, 3.5f, 61f), new Vector3(28f, 7f, 22f), army);
+        CreateBlock("North Hangar Door Left", new Vector3(41f, 2.3f, 49.7f), new Vector3(12f, 4.6f, 0.5f), cover);
+        CreateBlock("North Hangar Door Right", new Vector3(55f, 2.3f, 49.7f), new Vector3(12f, 4.6f, 0.5f), cover);
+        CreateBlock("Fuel Depot Wall North", new Vector3(-52f, 1.2f, -61f), new Vector3(31f, 2.4f, 0.7f), warning);
+        CreateBlock("Fuel Depot Wall South", new Vector3(-52f, 1.2f, -76f), new Vector3(31f, 2.4f, 0.7f), warning);
+        CreateBlock("Fuel Depot Wall West", new Vector3(-67f, 1.2f, -68.5f), new Vector3(0.7f, 2.4f, 16f), warning);
+        for (int i = 0; i < 6; i++)
+        {
+            GameObject fuelTank = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            fuelTank.name = $"Fuel Tank {i}";
+            fuelTank.transform.position = new Vector3(-62f + (i % 3) * 10f, 1.6f, -72f + (i / 3) * 7f);
+            fuelTank.transform.localScale = new Vector3(2.4f, 1.6f, 2.4f);
+            fuelTank.GetComponent<Renderer>().material = i % 2 == 0 ? army : cover;
+        }
+        CreateBlock("Radio Tower Base", new Vector3(64f, 1f, -58f), new Vector3(8f, 2f, 8f), cover);
+        CreateBlock("Radio Mast", new Vector3(64f, 10f, -58f), new Vector3(0.7f, 19f, 0.7f), warning);
+        CreateBlock("Radio Crossbar", new Vector3(64f, 15f, -58f), new Vector3(8f, 0.5f, 0.5f), warning);
+        CreateBlock("East Forward Bunker", new Vector3(67f, 2f, 18f), new Vector3(17f, 4f, 14f), wall);
+        CreateBlock("West Forward Bunker", new Vector3(-67f, 2f, 18f), new Vector3(17f, 4f, 14f), wall);
+        for (int i = 0; i < 12; i++)
+        {
+            float z = -48f + i * 8f;
+            CreateBlock($"Outer Cover East {i}", new Vector3(57f + (i % 2) * 5f, 0.8f, z), new Vector3(3.5f, 1.6f, 1.2f), i % 3 == 0 ? sandbag : cover);
+            CreateBlock($"Outer Cover West {i}", new Vector3(-57f - (i % 2) * 5f, 0.8f, -z), new Vector3(3.5f, 1.6f, 1.2f), i % 3 == 0 ? sandbag : cover);
+        }
     }
 
     private static void CreateRamp(string name, Vector3 position, Vector3 scale, float zRotation, Material material)

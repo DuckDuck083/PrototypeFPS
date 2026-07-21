@@ -106,7 +106,7 @@ public sealed class GameMenu : MonoBehaviour
 
     private void DrawClassSelector(float startX, float panelWidth, float y)
     {
-        string[] classNames = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN" };
+        string[] classNames = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE" };
         float classWidth = panelWidth / classNames.Length;
         GUI.color = new Color(0.04f, 0.07f, 0.09f, 0.95f);
         GUI.DrawTexture(new Rect(startX - 8f, y, panelWidth + 16f, 76f), Texture2D.whiteTexture);

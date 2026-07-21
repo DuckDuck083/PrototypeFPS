@@ -33,6 +33,10 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private float lastProgressTime;
     private float steeringSign;
     private float recoveryAngleOffset;
+    private float stunnedUntil;
+    private float poisonUntil;
+    private float nextPoisonTick;
+    private float poisonDamage;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -94,6 +98,13 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
                 Respawn();
             return;
         }
+
+        if (Time.time < poisonUntil && Time.time >= nextPoisonTick)
+        {
+            nextPoisonTick = Time.time + 1f;
+            TakeDamage(poisonDamage);
+        }
+        if (Time.time < stunnedUntil) return;
 
         if (!followsPlayer || player == null)
             return;
@@ -244,6 +255,18 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         TakeDamage(amount);
     }
 
+    public void Stun(float duration)
+    {
+        stunnedUntil = Mathf.Max(stunnedUntil, Time.time + duration);
+    }
+
+    public void ApplyPoison(float duration, float damagePerSecond)
+    {
+        poisonUntil = Mathf.Max(poisonUntil, Time.time + duration);
+        poisonDamage = Mathf.Max(poisonDamage, damagePerSecond);
+        nextPoisonTick = Mathf.Min(nextPoisonTick, Time.time + 0.25f);
+    }
+
     private void RemoveBulletHoles()
     {
         Transform[] children = GetComponentsInChildren<Transform>(true);
@@ -292,7 +315,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             return;
 
         float distance = Vector3.Distance(Camera.main.transform.position, transform.position);
-        if (distance > 45f)
+        if (distance > 75f)
             return;
 
         Vector3 visibilityStart = Camera.main.transform.position + Camera.main.transform.forward * 0.5f;
@@ -300,11 +323,14 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             && visibilityHit.transform.root != transform)
             return;
 
-        float width = Mathf.Lerp(90f, 45f, distance / 45f);
+        float width = Mathf.Lerp(110f, 52f, distance / 75f);
         Rect background = new Rect(screenPoint.x - width * 0.5f, Screen.height - screenPoint.y, width, 8f);
+        GUIStyle enemyLabel = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = distance < 35f ? 12 : 10, fontStyle = FontStyle.Bold };
+        enemyLabel.normal.textColor = new Color(1f, 0.72f, 0.25f);
+        GUI.Label(new Rect(background.x - 20f, background.y - 20f, background.width + 40f, 18f), archetype == EnemyArchetype.Normal ? "MELEE" : archetype.ToString().ToUpper(), enemyLabel);
         GUI.color = new Color(0f, 0f, 0f, 0.8f);
         GUI.DrawTexture(background, Texture2D.whiteTexture);
-        GUI.color = new Color(0.15f, 0.9f, 0.22f);
+        GUI.color = new Color(0.95f, 0.18f, 0.08f);
         GUI.DrawTexture(new Rect(background.x + 1f, background.y + 1f, (background.width - 2f) * Mathf.Clamp01(health / maximumHealth), background.height - 2f), Texture2D.whiteTexture);
         GUI.color = Color.white;
 

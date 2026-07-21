@@ -64,7 +64,7 @@ public sealed class WaveManager : MonoBehaviour
         for (int attempt = 0; attempt < 12; attempt++)
         {
             float angle = (index * 83f + attempt * 31f + Random.Range(-18f, 18f)) * Mathf.Deg2Rad;
-            float distance = Random.Range(20f, 46f);
+            float distance = Random.Range(26f, 70f);
             Vector3 position = new Vector3(Mathf.Sin(angle) * distance, 0f, Mathf.Cos(angle) * distance);
             if (!Physics.CheckCapsule(position + Vector3.up * 0.7f, position + Vector3.up * 2f, 0.55f, ~0, QueryTriggerInteraction.Ignore))
                 return position;
@@ -82,17 +82,19 @@ public sealed class WaveManager : MonoBehaviour
         controller.radius = tank ? 0.62f : 0.43f;
         controller.center = Vector3.up * controller.height * 0.5f;
 
-        Color uniformColor = type == TrainingTarget.EnemyArchetype.Normal ? new Color(0.7f, 0.12f, 0.1f)
-            : type == TrainingTarget.EnemyArchetype.Knife ? new Color(0.22f, 0.26f, 0.22f)
-            : type == TrainingTarget.EnemyArchetype.Demolition ? new Color(0.36f, 0.12f, 0.42f)
-            : type == TrainingTarget.EnemyArchetype.Tank ? new Color(0.1f, 0.22f, 0.08f)
-            : new Color(0.06f, 0.32f, 0.12f);
+        Color uniformColor = type == TrainingTarget.EnemyArchetype.Normal ? new Color(0.95f, 0.1f, 0.06f)
+            : type == TrainingTarget.EnemyArchetype.Knife ? new Color(0.75f, 0.3f, 0.08f)
+            : type == TrainingTarget.EnemyArchetype.Demolition ? new Color(0.68f, 0.12f, 0.82f)
+            : type == TrainingTarget.EnemyArchetype.Tank ? new Color(0.35f, 0.68f, 0.08f)
+            : type == TrainingTarget.EnemyArchetype.Sniper ? new Color(0.05f, 0.55f, 0.8f)
+            : new Color(0.08f, 0.68f, 0.2f);
         Material uniform = MakeMaterial(uniformColor);
         Material gear = MakeMaterial(new Color(0.025f, 0.035f, 0.03f));
         float scale = tank ? 1.25f : 1f;
         AddPart(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 1f * scale, 0f), new Vector3(0.72f, 0.9f, 0.72f) * scale, uniform, true);
         AddPart(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.86f * scale, 0f), Vector3.one * 0.52f * scale, uniform, true);
         AddPart(root.transform, "Vest", PrimitiveType.Cube, new Vector3(0f, 1.15f * scale, 0.05f), new Vector3(0.78f, 0.58f, 0.42f) * scale, gear);
+        AddPart(root.transform, "Enemy Beacon", PrimitiveType.Sphere, new Vector3(0f, 2.55f * scale, 0f), Vector3.one * 0.2f, MakeUnlitMaterial(uniformColor));
 
         if (type != TrainingTarget.EnemyArchetype.Normal)
         {
@@ -144,6 +146,13 @@ public sealed class WaveManager : MonoBehaviour
     private static Material MakeMaterial(Color color)
     {
         Material material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        material.color = color;
+        return material;
+    }
+
+    private static Material MakeUnlitMaterial(Color color)
+    {
+        Material material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
         material.color = color;
         return material;
     }
