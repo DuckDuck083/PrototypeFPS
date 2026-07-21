@@ -31,6 +31,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private float turretThreat;
     private Vector3 lastProgressPosition;
     private float lastProgressTime;
+    private float steeringSign;
+    private float recoveryAngleOffset;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -79,6 +81,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         spawnPosition = transform.position;
         lastProgressPosition = transform.position;
         lastProgressTime = Time.time;
+        steeringSign = Random.value < 0.5f ? -1f : 1f;
+        recoveryAngleOffset = Random.Range(0f, 360f);
         health = maximumHealth;
     }
 
@@ -141,7 +145,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         if (!Physics.SphereCast(origin, 0.38f, desired, out RaycastHit obstacle, 1.4f, ~0, QueryTriggerInteraction.Ignore)
             || obstacle.collider.transform.root == transform)
             return desired;
-        Vector3 side = Vector3.Cross(Vector3.up, desired) * (GetInstanceID() % 2 == 0 ? 1f : -1f);
+        Vector3 side = Vector3.Cross(Vector3.up, desired) * steeringSign;
         return (side + desired * 0.25f).normalized;
     }
 
@@ -157,7 +161,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         Vector3 recovery = player.transform.position + Vector3.forward * 17f;
         for (int attempt = 0; attempt < 10; attempt++)
         {
-            float angle = (GetInstanceID() * 37f + attempt * 41f) * Mathf.Deg2Rad;
+            float angle = (recoveryAngleOffset + attempt * 41f) * Mathf.Deg2Rad;
             Vector3 candidate = player.transform.position + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * 17f;
             if (!Physics.CheckCapsule(candidate + Vector3.up * 0.7f, candidate + Vector3.up * 2f, 0.55f, ~0, QueryTriggerInteraction.Ignore))
             {
