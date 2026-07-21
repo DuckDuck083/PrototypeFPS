@@ -2,10 +2,10 @@ using UnityEngine;
 
 public sealed class EngineerTurret : MonoBehaviour, IDamageable
 {
-    private const float MaximumHealth = 160f;
-    private const float Range = 32f;
-    private const float FireInterval = 0.22f;
-    private const float Damage = 9f;
+    private const float MaximumHealth = 220f;
+    private const float Range = 38f;
+    private const float FireInterval = 0.16f;
+    private const float Damage = 13f;
     private float health = MaximumHealth;
     private float nextShotTime;
     private Transform head;
@@ -28,7 +28,7 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
         head.rotation = Quaternion.Slerp(head.rotation, Quaternion.LookRotation(direction), 12f * Time.deltaTime);
         if (Time.time < nextShotTime) return;
         nextShotTime = Time.time + FireInterval;
-        target.TakeDamage(Damage);
+        target.TakeDamageFromTurret(Damage, this);
         DrawTracer(targetPoint);
     }
 

@@ -22,10 +22,15 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private bool dead;
     public bool IsAlive => !dead;
     public bool IsHostile => followsPlayer;
+    public bool IsWaveEnemy => waveManager != null;
     private WaveManager waveManager;
     private EnemyArchetype archetype;
     private int weaponAmmo;
     private int maximumWeaponAmmo;
+    private EngineerTurret aggroTurret;
+    private float turretThreat;
+    private Vector3 lastProgressPosition;
+    private float lastProgressTime;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -72,6 +77,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         controller = GetComponent<CharacterController>();
         renderers = GetComponentsInChildren<Renderer>();
         spawnPosition = transform.position;
+        lastProgressPosition = transform.position;
+        lastProgressTime = Time.time;
         health = maximumHealth;
     }
 
@@ -87,7 +94,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         if (!followsPlayer || player == null)
             return;
 
-        Vector3 offset = player.transform.position - transform.position;
+        if (aggroTurret == null) turretThreat = 0f;
+        Transform attackTarget = aggroTurret != null ? aggroTurret.transform : player.transform;
+        Vector3 offset = attackTarget.position - transform.position;
         offset.y = 0f;
         float distance = offset.magnitude;
 
@@ -98,9 +107,10 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             : archetype == EnemyArchetype.Knife ? 1.7f : 1.35f;
         if (distance > desiredRange)
         {
-            Vector3 direction = offset.normalized;
+            Vector3 direction = GetSteeringDirection(offset.normalized);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), 8f * Time.deltaTime);
             controller.Move(direction * moveSpeed * Time.deltaTime + Vector3.down * 2f * Time.deltaTime);
+            RecoverIfStuck();
         }
         else if (Time.time >= nextAttackTime)
         {
@@ -110,41 +120,82 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
                 nextAttackTime = Time.time + (archetype == EnemyArchetype.Tank ? 3.2f : 2f);
                 return;
             }
-            if (!usesRangedWeapon || HasLineOfSight())
+            if (!usesRangedWeapon || HasLineOfSight(attackTarget))
             {
-                if (archetype == EnemyArchetype.Demolition)
+                if (aggroTurret != null)
+                    aggroTurret.TakeDamage(attackDamage);
+                else if (archetype == EnemyArchetype.Demolition)
                     player.TakeExplosiveDamage(attackDamage, transform.position);
                 else
                     player.TakeDamage(attackDamage, transform.position);
-                if (usesRangedWeapon) DrawEnemyTracer();
+                if (usesRangedWeapon) DrawEnemyTracer(attackTarget.position + Vector3.up);
                 if (usesRangedWeapon) weaponAmmo--;
             }
             nextAttackTime = Time.time + attackInterval;
         }
     }
 
-    private bool HasLineOfSight()
+    private Vector3 GetSteeringDirection(Vector3 desired)
+    {
+        Vector3 origin = transform.position + Vector3.up;
+        if (!Physics.SphereCast(origin, 0.38f, desired, out RaycastHit obstacle, 1.4f, ~0, QueryTriggerInteraction.Ignore)
+            || obstacle.collider.transform.root == transform)
+            return desired;
+        Vector3 side = Vector3.Cross(Vector3.up, desired) * (GetInstanceID() % 2 == 0 ? 1f : -1f);
+        return (side + desired * 0.25f).normalized;
+    }
+
+    private void RecoverIfStuck()
+    {
+        if (Vector3.Distance(transform.position, lastProgressPosition) > 0.45f)
+        {
+            lastProgressPosition = transform.position;
+            lastProgressTime = Time.time;
+            return;
+        }
+        if (waveManager == null || Time.time < lastProgressTime + 6f) return;
+        Vector3 recovery = player.transform.position + Vector3.forward * 17f;
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            float angle = (GetInstanceID() * 37f + attempt * 41f) * Mathf.Deg2Rad;
+            Vector3 candidate = player.transform.position + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * 17f;
+            if (!Physics.CheckCapsule(candidate + Vector3.up * 0.7f, candidate + Vector3.up * 2f, 0.55f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                recovery = candidate;
+                break;
+            }
+        }
+        controller.enabled = false;
+        transform.position = recovery;
+        controller.enabled = true;
+        lastProgressPosition = recovery;
+        lastProgressTime = Time.time;
+    }
+
+    private bool HasLineOfSight(Transform targetTransform)
     {
         Vector3 start = transform.position + Vector3.up * 1.45f;
-        Vector3 end = player.transform.position + Vector3.up * 1.2f;
+        Vector3 end = targetTransform.position + Vector3.up;
         Vector3 direction = end - start;
         RaycastHit[] hits = Physics.RaycastAll(start, direction.normalized, direction.magnitude, ~0, QueryTriggerInteraction.Ignore);
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
         foreach (RaycastHit hit in hits)
         {
             if (hit.collider.transform.root == transform) continue;
-            return hit.collider.GetComponentInParent<PlayerVitals>() != null;
+            return targetTransform == player.transform
+                ? hit.collider.GetComponentInParent<PlayerVitals>() != null
+                : hit.collider.GetComponentInParent<EngineerTurret>() == aggroTurret;
         }
         return true;
     }
 
-    private void DrawEnemyTracer()
+    private void DrawEnemyTracer(Vector3 targetPoint)
     {
         if (archetype == EnemyArchetype.Demolition)
         {
             GameObject blast = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             blast.name = "Enemy Grenade Blast";
-            blast.transform.position = player.transform.position + Vector3.up;
+            blast.transform.position = targetPoint;
             blast.transform.localScale = Vector3.one * 2.4f;
             Destroy(blast.GetComponent<Collider>());
             blast.GetComponent<Renderer>().material.color = new Color(1f, 0.2f, 0.03f);
@@ -159,7 +210,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         line.startColor = new Color(0.35f, 1f, 0.3f, 0.9f);
         line.endColor = new Color(1f, 0.7f, 0.15f, 0.1f);
         line.SetPosition(0, transform.position + Vector3.up * 1.35f + transform.forward * 0.6f);
-        line.SetPosition(1, player.transform.position + Vector3.up * 1.15f);
+        line.SetPosition(1, targetPoint);
         Destroy(tracer, 0.08f);
     }
 
@@ -180,6 +231,13 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             if (waveManager != null)
                 waveManager.NotifyEnemyDefeated(this);
         }
+    }
+
+    public void TakeDamageFromTurret(float amount, EngineerTurret turret)
+    {
+        turretThreat += amount;
+        if (turretThreat >= 32f) aggroTurret = turret;
+        TakeDamage(amount);
     }
 
     private void RemoveBulletHoles()

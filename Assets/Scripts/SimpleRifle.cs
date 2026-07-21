@@ -734,6 +734,10 @@ public sealed class SimpleRifle : MonoBehaviour
         Rigidbody body = sticky.AddComponent<Rigidbody>();
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         body.linearVelocity = playerCamera.transform.forward * 15f + Vector3.up * 1.5f;
+        Collider stickyCollider = sticky.GetComponent<Collider>();
+        Collider[] ownerColliders = GetComponentsInChildren<Collider>(true);
+        foreach (Collider ownerCollider in ownerColliders)
+            if (ownerCollider != null) Physics.IgnoreCollision(stickyCollider, ownerCollider, true);
         ExplosiveProjectile explosive = sticky.AddComponent<ExplosiveProjectile>();
         explosive.Configure(105f, 4.8f, 45f, false, this, false, false, true);
         activeStickies.RemoveAll(item => item == null);

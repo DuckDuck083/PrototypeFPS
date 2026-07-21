@@ -8,13 +8,32 @@ public sealed class WaveManager : MonoBehaviour
     private float nextWaveTime;
     private bool waitingForNextWave;
     private int spawnSequence;
+    private float nextReconcileTime;
 
     private void Start() => StartWave(Mathf.Max(1, PlayerPrefs.GetInt(SavedWaveKey, 1)));
 
     private void Update()
     {
+        if (Time.time >= nextReconcileTime)
+        {
+            nextReconcileTime = Time.time + 1f;
+            ReconcileEnemyCount();
+        }
         if (waitingForNextWave && Time.time >= nextWaveTime)
             StartWave(CurrentWave + 1);
+    }
+
+    private void ReconcileEnemyCount()
+    {
+        int liveEnemies = 0;
+        foreach (TrainingTarget target in FindObjectsByType<TrainingTarget>())
+            if (target.IsWaveEnemy && target.IsHostile && target.IsAlive) liveEnemies++;
+        EnemiesRemaining = liveEnemies;
+        if (EnemiesRemaining == 0 && !waitingForNextWave)
+        {
+            waitingForNextWave = true;
+            nextWaveTime = Time.time + 4f;
+        }
     }
 
     private void StartWave(int wave)

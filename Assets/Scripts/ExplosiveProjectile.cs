@@ -49,6 +49,9 @@ public sealed class ExplosiveProjectile : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
+        if (owner != null && collision.transform.root == owner.transform.root)
+            return;
+
         if (explodeOnImpact || (enemyImpactOnly && collision.collider.GetComponentInParent<TrainingTarget>() != null))
             Explode();
         else if (sticky)
