@@ -84,6 +84,10 @@ public sealed class FirstPersonController : MonoBehaviour
 
     private void Update()
     {
+        // This component is disabled while the menu is open. If it is running,
+        // gameplay must not remain frozen by a stale menu time scale.
+        if (Time.timeScale <= 0f)
+            Time.timeScale = 1f;
         HandleLook();
         HandleCrouch();
         HandleMovement();
@@ -101,10 +105,21 @@ public sealed class FirstPersonController : MonoBehaviour
     private void HandleMovement()
     {
         Vector2 input = moveAction.ReadValue<Vector2>();
+        if (Keyboard.current != null)
+        {
+            Vector2 keyboardInput = new Vector2(
+                (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed ? 1f : 0f)
+                    - (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed ? 1f : 0f),
+                (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed ? 1f : 0f)
+                    - (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed ? 1f : 0f));
+            if (keyboardInput.sqrMagnitude > input.sqrMagnitude)
+                input = keyboardInput;
+        }
         Vector3 horizontalMovement = transform.right * input.x + transform.forward * input.y;
         horizontalMovement = Vector3.ClampMagnitude(horizontalMovement, 1f);
 
-        bool wantsToSprint = !isCrouching && input.sqrMagnitude > 0.01f && sprintAction.IsPressed();
+        bool sprintPressed = sprintAction.IsPressed() || (Keyboard.current != null && Keyboard.current.leftShiftKey.isPressed);
+        bool wantsToSprint = !isCrouching && input.sqrMagnitude > 0.01f && sprintPressed;
         bool isSprinting = wantsToSprint && (playerVitals == null || playerVitals.UseSprintStamina());
         float weaponMovementMultiplier = GetComponent<SimpleRifle>() != null ? GetComponent<SimpleRifle>().MovementMultiplier : 1f;
         float speed = (isCrouching ? crouchSpeed : isSprinting ? sprintSpeed : walkSpeed) * weaponMovementMultiplier;
@@ -112,7 +127,8 @@ public sealed class FirstPersonController : MonoBehaviour
         if (characterController.isGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;
 
-        if (jumpAction.WasPressedThisFrame() && characterController.isGrounded && !isCrouching)
+        bool jumpPressed = jumpAction.WasPressedThisFrame() || (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame);
+        if (jumpPressed && characterController.isGrounded && !isCrouching)
             verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
 
         verticalVelocity += gravity * Time.deltaTime;
@@ -122,7 +138,8 @@ public sealed class FirstPersonController : MonoBehaviour
 
     private void HandleCrouch()
     {
-        if (crouchAction.IsPressed())
+        bool crouchPressed = crouchAction.IsPressed() || (Keyboard.current != null && (Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.cKey.isPressed));
+        if (crouchPressed)
             isCrouching = true;
         else if (CanStandUp())
             isCrouching = false;

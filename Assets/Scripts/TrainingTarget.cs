@@ -24,6 +24,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     public bool IsHostile => followsPlayer;
     private WaveManager waveManager;
     private EnemyArchetype archetype;
+    private int weaponAmmo;
+    private int maximumWeaponAmmo;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -55,6 +57,13 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             : enemyType == EnemyArchetype.Handgun ? 0.85f
             : enemyType == EnemyArchetype.Knife ? 0.55f
             : 1f;
+        maximumWeaponAmmo = enemyType == EnemyArchetype.Handgun ? 12
+            : enemyType == EnemyArchetype.Rifle ? 30
+            : enemyType == EnemyArchetype.Sniper ? 1
+            : enemyType == EnemyArchetype.Demolition ? 6
+            : enemyType == EnemyArchetype.Tank ? 100
+            : 0;
+        weaponAmmo = maximumWeaponAmmo;
     }
 
     private void Awake()
@@ -95,6 +104,12 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         }
         else if (Time.time >= nextAttackTime)
         {
+            if (usesRangedWeapon && weaponAmmo <= 0)
+            {
+                weaponAmmo = maximumWeaponAmmo;
+                nextAttackTime = Time.time + (archetype == EnemyArchetype.Tank ? 3.2f : 2f);
+                return;
+            }
             if (!usesRangedWeapon || HasLineOfSight())
             {
                 if (archetype == EnemyArchetype.Demolition)
@@ -102,6 +117,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
                 else
                     player.TakeDamage(attackDamage, transform.position);
                 if (usesRangedWeapon) DrawEnemyTracer();
+                if (usesRangedWeapon) weaponAmmo--;
             }
             nextAttackTime = Time.time + attackInterval;
         }
@@ -229,5 +245,27 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         GUI.color = new Color(0.15f, 0.9f, 0.22f);
         GUI.DrawTexture(new Rect(background.x + 1f, background.y + 1f, (background.width - 2f) * Mathf.Clamp01(health / maximumHealth), background.height - 2f), Texture2D.whiteTexture);
         GUI.color = Color.white;
+
+        Ray aimRay = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
+        if (Physics.Raycast(aimRay, out RaycastHit aimedHit, 80f, ~0, QueryTriggerInteraction.Ignore)
+            && aimedHit.collider.GetComponentInParent<TrainingTarget>() == this)
+            DrawInspectionPanel();
+    }
+
+    private void DrawInspectionPanel()
+    {
+        string typeName = archetype == EnemyArchetype.Normal ? "NORMAL MELEE" : archetype.ToString().ToUpper();
+        string ammoText = usesRangedWeapon ? $"AMMO  {weaponAmmo} / {maximumWeaponAmmo}" : "AMMO  N/A";
+        Rect panel = new Rect(Screen.width * 0.5f + 34f, Screen.height * 0.5f - 62f, 190f, 74f);
+        GUI.color = new Color(0.02f, 0.025f, 0.03f, 0.9f);
+        GUI.DrawTexture(panel, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle title = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold };
+        title.normal.textColor = new Color(1f, 0.35f, 0.2f);
+        GUI.Label(new Rect(panel.x + 9f, panel.y + 5f, 172f, 22f), typeName, title);
+        GUIStyle info = new GUIStyle(GUI.skin.label) { fontSize = 13 };
+        info.normal.textColor = Color.white;
+        GUI.Label(new Rect(panel.x + 9f, panel.y + 28f, 172f, 20f), $"HEALTH  {Mathf.CeilToInt(health)} / {Mathf.CeilToInt(maximumHealth)}", info);
+        GUI.Label(new Rect(panel.x + 9f, panel.y + 48f, 172f, 20f), ammoText, info);
     }
 }

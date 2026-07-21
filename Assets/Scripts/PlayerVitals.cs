@@ -103,6 +103,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
     private void BeginRespawn()
     {
+        FindAnyObjectByType<WaveManager>()?.SaveProgress();
         isDead = true;
         respawnAt = Time.time + 5f;
         GetComponent<FirstPersonController>().enabled = false;

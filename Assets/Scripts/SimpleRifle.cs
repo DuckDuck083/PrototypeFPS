@@ -215,6 +215,7 @@ public sealed class SimpleRifle : MonoBehaviour
             sniperAmmo = ammunition[weaponIndex];
             sniperReserveAmmo = weaponIndex == 0 ? 24 : 0;
         }
+        FindAnyObjectByType<WaveManager>()?.SaveProgress();
     }
 
     public bool IsLoadoutSelection(int slotIndex, int weaponIndex)
@@ -460,8 +461,8 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         else if (currentSlot == 2 && attackAction.IsPressed())
         {
-            float[] damages = { 45f, 38f, 60f, 85f, 78f };
-            float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f, 0.78f };
+            float[] damages = { 45f, 38f, 60f, 85f, 78f, 52f };
+            float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f, 0.78f, 0.55f };
             SwingMelee(damages[option], delays[option], option == 3 ? 3.2f : 2.4f, option == 2 ? 0.22f : 0f);
         }
         else if (currentSlot == 3)
@@ -578,7 +579,7 @@ public sealed class SimpleRifle : MonoBehaviour
         AddPart(head, "Gun Body", Vector3.zero, new Vector3(0.55f, 0.3f, 0.65f), CreateMaterial(new Color(0.12f, 0.14f, 0.16f)));
         AddPart(head, "Barrel", new Vector3(0f, 0f, 0.62f), new Vector3(0.12f, 0.12f, 0.72f), CreateMaterial(new Color(0.04f, 0.05f, 0.06f)));
         activeTurret = turret.AddComponent<EngineerTurret>();
-        activeTurret.Configure(head);
+        activeTurret.Configure(head, transform);
     }
 
     private static string GetWeaponName(WeaponType weapon)
@@ -866,6 +867,12 @@ public sealed class SimpleRifle : MonoBehaviour
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         if (Physics.SphereCast(ray, 0.35f, out RaycastHit hit, meleeRange, ~0, QueryTriggerInteraction.Ignore))
         {
+            EngineerTurret turret = hit.collider.GetComponentInParent<EngineerTurret>();
+            if (currentSlot == 2 && slotSelections[2] == 5 && turret != null)
+            {
+                turret.Repair(35f);
+                return;
+            }
             ApplyDamage(hit, meleeDamage, false, randomCritChance);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }

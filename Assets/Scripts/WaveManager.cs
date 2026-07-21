@@ -2,13 +2,14 @@ using UnityEngine;
 
 public sealed class WaveManager : MonoBehaviour
 {
+    private const string SavedWaveKey = "PrototypeFPS.CurrentWave";
     public int CurrentWave { get; private set; }
     public int EnemiesRemaining { get; private set; }
     private float nextWaveTime;
     private bool waitingForNextWave;
     private int spawnSequence;
 
-    private void Start() => StartWave(1);
+    private void Start() => StartWave(Mathf.Max(1, PlayerPrefs.GetInt(SavedWaveKey, 1)));
 
     private void Update()
     {
@@ -19,6 +20,7 @@ public sealed class WaveManager : MonoBehaviour
     private void StartWave(int wave)
     {
         CurrentWave = wave;
+        SaveProgress();
         waitingForNextWave = false;
         int normalCount = wave == 1 ? 5 : wave == 2 ? 8 : 7 + wave;
         Spawn(TrainingTarget.EnemyArchetype.Normal, normalCount);
@@ -40,9 +42,15 @@ public sealed class WaveManager : MonoBehaviour
 
     private static Vector3 FindSpawnPosition(int index)
     {
-        float angle = (index * 83f + Random.Range(-18f, 18f)) * Mathf.Deg2Rad;
-        float distance = Random.Range(24f, 48f);
-        return new Vector3(Mathf.Sin(angle) * distance, 0f, Mathf.Cos(angle) * distance);
+        for (int attempt = 0; attempt < 12; attempt++)
+        {
+            float angle = (index * 83f + attempt * 31f + Random.Range(-18f, 18f)) * Mathf.Deg2Rad;
+            float distance = Random.Range(20f, 46f);
+            Vector3 position = new Vector3(Mathf.Sin(angle) * distance, 0f, Mathf.Cos(angle) * distance);
+            if (!Physics.CheckCapsule(position + Vector3.up * 0.7f, position + Vector3.up * 2f, 0.55f, ~0, QueryTriggerInteraction.Ignore))
+                return position;
+        }
+        return new Vector3(0f, 0f, 22f + index % 5 * 3f);
     }
 
     private void CreateEnemy(TrainingTarget.EnemyArchetype type, Vector3 position)
@@ -95,6 +103,12 @@ public sealed class WaveManager : MonoBehaviour
             waitingForNextWave = true;
             nextWaveTime = Time.time + 4f;
         }
+    }
+
+    public void SaveProgress()
+    {
+        PlayerPrefs.SetInt(SavedWaveKey, Mathf.Max(1, CurrentWave));
+        PlayerPrefs.Save();
     }
 
     private void OnGUI()

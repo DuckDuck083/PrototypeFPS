@@ -66,6 +66,68 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         CreateBlock("East Tower", new Vector3(30f, 2f, -22f), new Vector3(7f, 4f, 7f), wall);
         CreateRamp("West Ramp", new Vector3(-25f, 1f, 22f), new Vector3(7f, 0.7f, 4f), -18f, cover);
         CreateRamp("East Ramp", new Vector3(25f, 1f, -22f), new Vector3(7f, 0.7f, 4f), 18f, cover);
+        BuildMilitaryBase(wall, cover, accent);
+    }
+
+    private static void BuildMilitaryBase(Material wall, Material cover, Material accent)
+    {
+        Material sandbag = CreateArenaMaterial(new Color(0.38f, 0.34f, 0.22f), 0.02f, 0.18f);
+        Material army = CreateArenaMaterial(new Color(0.12f, 0.23f, 0.13f), 0.18f, 0.25f);
+        Material warning = CreateArenaMaterial(new Color(0.82f, 0.52f, 0.04f), 0.1f, 0.32f);
+
+        CreateBlock("Command Center", new Vector3(0f, 2.5f, -43f), new Vector3(20f, 5f, 11f), wall);
+        CreateBlock("Command Roof", new Vector3(0f, 5.25f, -43f), new Vector3(21f, 0.5f, 12f), accent);
+        CreateBlock("Command Entrance Left", new Vector3(-4.5f, 1.5f, -37.3f), new Vector3(8f, 3f, 0.6f), cover);
+        CreateBlock("Command Entrance Right", new Vector3(4.5f, 1.5f, -37.3f), new Vector3(8f, 3f, 0.6f), cover);
+
+        CreateBlock("West Barracks", new Vector3(-39f, 1.8f, -12f), new Vector3(13f, 3.6f, 22f), wall);
+        CreateBlock("East Barracks", new Vector3(39f, 1.8f, 12f), new Vector3(13f, 3.6f, 22f), wall);
+        CreateBlock("West Barracks Roof", new Vector3(-39f, 3.85f, -12f), new Vector3(14f, 0.5f, 23f), army);
+        CreateBlock("East Barracks Roof", new Vector3(39f, 3.85f, 12f), new Vector3(14f, 0.5f, 23f), army);
+
+        for (int side = -1; side <= 1; side += 2)
+        for (int i = 0; i < 7; i++)
+        {
+            CreateBlock($"Perimeter Post {side} {i}", new Vector3(side * 48f, 1.6f, -32f + i * 10f), new Vector3(0.35f, 3.2f, 0.35f), cover);
+            CreateBlock($"Fence Rail {side} {i}", new Vector3(side * 48f, 1.7f, -27f + i * 10f), new Vector3(0.18f, 0.18f, 9.6f), cover);
+        }
+
+        for (int i = 0; i < 10; i++)
+        {
+            float x = -18f + i * 4f;
+            CreateBlock($"Sandbag North {i}", new Vector3(x, 0.45f, 35f), new Vector3(3.4f, 0.65f, 0.8f), sandbag);
+            if (i < 7) CreateBlock($"Sandbag Checkpoint {i}", new Vector3(-12f + i * 4f, 0.45f, -29f), new Vector3(3.4f, 0.65f, 0.8f), sandbag);
+        }
+
+        Vector3[] cratePositions =
+        {
+            new Vector3(-28f, 0.75f, 5f), new Vector3(-25.5f, 0.75f, 7f), new Vector3(27f, 0.75f, -5f),
+            new Vector3(24f, 0.75f, -8f), new Vector3(-8f, 0.75f, 25f), new Vector3(11f, 0.75f, -22f),
+            new Vector3(31f, 0.75f, 31f), new Vector3(-32f, 0.75f, -35f)
+        };
+        for (int i = 0; i < cratePositions.Length; i++)
+        {
+            CreateBlock($"Supply Crate {i}", cratePositions[i], new Vector3(1.5f, 1.5f, 1.5f), i % 2 == 0 ? army : warning);
+            if (i % 3 == 0) CreateBlock($"Stacked Crate {i}", cratePositions[i] + Vector3.up * 1.5f, new Vector3(1.5f, 1.5f, 1.5f), army);
+        }
+
+        CreateBlock("Checkpoint Barrier Left", new Vector3(-8f, 0.75f, 47f), new Vector3(13f, 1.2f, 0.5f), warning);
+        CreateBlock("Checkpoint Barrier Right", new Vector3(8f, 0.75f, 47f), new Vector3(13f, 1.2f, 0.5f), warning);
+        CreateBlock("Armored Truck Body", new Vector3(22f, 1.25f, 34f), new Vector3(6f, 2.1f, 3.2f), army);
+        CreateBlock("Armored Truck Cab", new Vector3(24.7f, 1.65f, 34f), new Vector3(2.2f, 2.8f, 3f), army);
+        for (int i = -1; i <= 1; i += 2)
+        {
+            CreateBlock($"Truck Wheel Front {i}", new Vector3(24f, 0.55f, 34f + i * 1.7f), new Vector3(1.1f, 1.1f, 0.45f), cover);
+            CreateBlock($"Truck Wheel Rear {i}", new Vector3(20f, 0.55f, 34f + i * 1.7f), new Vector3(1.1f, 1.1f, 0.45f), cover);
+        }
+
+        GameObject helipad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        helipad.name = "Helipad";
+        helipad.transform.position = new Vector3(-29f, 0.12f, 35f);
+        helipad.transform.localScale = new Vector3(7f, 0.12f, 7f);
+        helipad.GetComponent<Renderer>().material = cover;
+        CreateBlock("Helipad H Vertical", new Vector3(-29f, 0.3f, 35f), new Vector3(1f, 0.08f, 8f), warning);
+        CreateBlock("Helipad H Cross", new Vector3(-29f, 0.31f, 35f), new Vector3(6f, 0.08f, 1f), warning);
     }
 
     private static void CreateRamp(string name, Vector3 position, Vector3 scale, float zRotation, Material material)

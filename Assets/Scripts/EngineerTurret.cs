@@ -9,11 +9,13 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
     private float health = MaximumHealth;
     private float nextShotTime;
     private Transform head;
+    private Transform owner;
     private Material tracerMaterial;
 
-    public void Configure(Transform turretHead)
+    public void Configure(Transform turretHead, Transform turretOwner)
     {
         head = turretHead;
+        owner = turretOwner;
         tracerMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
     }
 
@@ -41,8 +43,17 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
             if (distance >= bestDistance) continue;
             Vector3 targetPoint = candidate.transform.position + Vector3.up * 1.25f;
             Vector3 direction = targetPoint - head.position;
-            if (Physics.Raycast(head.position, direction.normalized, out RaycastHit hit, distance, ~0, QueryTriggerInteraction.Ignore)
-                && hit.collider.GetComponentInParent<TrainingTarget>() != candidate) continue;
+            RaycastHit[] hits = Physics.RaycastAll(head.position, direction.normalized, distance, ~0, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            bool blocked = false;
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.collider.transform.root == transform || hit.collider.transform.root == owner) continue;
+                if (hit.collider.GetComponentInParent<PlayerVitals>() != null) continue;
+                blocked = hit.collider.GetComponentInParent<TrainingTarget>() != candidate;
+                break;
+            }
+            if (blocked) continue;
             best = candidate;
             bestDistance = distance;
         }
@@ -68,6 +79,11 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
     {
         health -= amount;
         if (health <= 0f) Destroy(gameObject);
+    }
+
+    public void Repair(float amount)
+    {
+        health = Mathf.Min(MaximumHealth, health + amount);
     }
 
     private void OnGUI()
