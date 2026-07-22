@@ -44,7 +44,7 @@ public sealed class ConvoyGameMode : GameModeBase
         {
             nextCombatTick = Time.time + 0.75f;
             BodyguardsAttack();
-            foreach (TrainingTarget enemy in FindObjectsByType<TrainingTarget>(FindObjectsSortMode.None))
+            foreach (TrainingTarget enemy in FindObjectsByType<TrainingTarget>())
                 if (enemy.IsHostile && enemy.IsAlive && Vector3.Distance(enemy.transform.position, briefcase.transform.position) < 10f)
                     briefcase.TakeDamage(8f);
         }
@@ -65,7 +65,7 @@ public sealed class ConvoyGameMode : GameModeBase
     private void BodyguardsAttack()
     {
         foreach (Transform guard in bodyguards)
-        foreach (TrainingTarget enemy in FindObjectsByType<TrainingTarget>(FindObjectsSortMode.None))
+        foreach (TrainingTarget enemy in FindObjectsByType<TrainingTarget>())
             if (enemy.IsHostile && enemy.IsAlive && Vector3.Distance(guard.position, enemy.transform.position) < 24f)
             {
                 enemy.TakeDamage(9f);

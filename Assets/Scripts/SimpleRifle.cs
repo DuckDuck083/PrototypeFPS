@@ -90,6 +90,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private const float FalloffEnd = 58f;
     private const float MinimumFalloffMultiplier = 0.35f;
     public float ModeDamageMultiplier { get; set; } = 1f;
+    public float PerkDamageMultiplier { get; set; } = 1f;
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (IsSniperRifleEquipped ? sniperScopeToggled : aimAction.IsPressed());
     private bool IsSniperRifleEquipped => (currentSlot == 3 && slotSelections[3] == 0) || (currentSlot == 0 && slotSelections[0] == 6);
@@ -196,6 +197,8 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         if (slotIndex < 0 || slotIndex >= 4 || weaponIndex < 0 || weaponIndex >= SlotWeaponNames[slotIndex].Length)
             return;
+        if (EconomyManager.Instance != null && !EconomyManager.Instance.IsWeaponUnlocked(slotIndex, weaponIndex))
+            return;
         slotSelections[slotIndex] = weaponIndex;
         if (slotIndex == 0)
         {
@@ -266,6 +269,8 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public void SetPlayerClass(PlayerClass playerClass)
     {
+        if (EconomyManager.Instance != null && !EconomyManager.Instance.IsClassUnlocked((int)playerClass))
+            return;
         if (CurrentClass == PlayerClass.Engineer && playerClass != PlayerClass.Engineer && activeTurret != null)
             Destroy(activeTurret.gameObject);
         CurrentClass = playerClass;
@@ -1175,7 +1180,7 @@ public sealed class SimpleRifle : MonoBehaviour
         bool critical = (allowHeadshotCritical && hit.collider.gameObject.name == "Head") || Random.value < randomCritChance;
         float falloff = critical || ignoresFalloff ? 1f : GetDamageFalloff(hit.distance);
         float finalDamage = (critical ? baseDamage * 3f : baseDamage) * falloff;
-        damageable.TakeDamage(finalDamage * ModeDamageMultiplier);
+        damageable.TakeDamage(finalDamage * ModeDamageMultiplier * PerkDamageMultiplier);
 
         lastDamageAmount = finalDamage;
         lastHitWasCritical = critical;

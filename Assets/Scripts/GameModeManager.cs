@@ -27,19 +27,36 @@ public sealed class GameModeManager : MonoBehaviour
 
     public void StartMode(Mode type)
     {
+        if (EconomyManager.Instance != null && !EconomyManager.Instance.IsModeUnlocked((int)type))
+            return;
+        if (ActiveMode != null && ActiveMode.Type == type && string.IsNullOrEmpty(Result))
+        {
+            ActiveMode.enabled = true;
+            return;
+        }
         if (ActiveMode != null) ActiveMode.EndMode();
         Spawner.StopMode();
         Spawner.ClearEnemies();
         ResetPlayerModifiers();
+        RestorePlayerForNewMatch();
         Result = string.Empty;
         foreach (GameModeBase mode in GetComponents<GameModeBase>())
             if (mode.Type == type) ActiveMode = mode;
         ActiveMode?.Begin(this);
     }
 
+    private static void RestorePlayerForNewMatch()
+    {
+        PlayerVitals vitals = FindAnyObjectByType<PlayerVitals>();
+        if (vitals != null) vitals.RestoreForNewMode();
+        SimpleRifle rifle = FindAnyObjectByType<SimpleRifle>();
+        if (rifle != null) rifle.RestoreSpawnAmmo();
+    }
+
     public void Finish(bool victory, string message)
     {
         Result = victory ? $"VICTORY — {message}" : $"DEFEAT — {message}";
+        if (victory && ActiveMode != null) EconomyManager.Instance?.RewardVictory(ActiveMode.Type);
         if (ActiveMode != null) ActiveMode.enabled = false;
     }
 

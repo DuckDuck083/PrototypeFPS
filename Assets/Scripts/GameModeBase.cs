@@ -18,7 +18,7 @@ public abstract class GameModeBase : MonoBehaviour
     protected int LivingEnemies()
     {
         int count = 0;
-        foreach (TrainingTarget target in FindObjectsByType<TrainingTarget>(FindObjectsSortMode.None))
+        foreach (TrainingTarget target in FindObjectsByType<TrainingTarget>())
             if (target.IsHostile && target.IsAlive) count++;
         return count;
     }

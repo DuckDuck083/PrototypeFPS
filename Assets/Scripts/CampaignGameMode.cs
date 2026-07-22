@@ -62,6 +62,7 @@ public sealed class CampaignGameMode : GameModeBase
 
     private void CompleteMission()
     {
+        EconomyManager.Instance?.NotifyMissionCompleted();
         if (mission >= 5)
         {
             Manager.Finish(true, "the war is over");

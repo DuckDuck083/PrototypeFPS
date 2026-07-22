@@ -9,6 +9,10 @@ public sealed class GameMenu : MonoBehaviour
     private bool menuOpen = true;
     private bool loadoutOpen;
     private bool playModeOpen;
+    private bool shopOpen;
+    private bool questsOpen;
+    private int shopCategory;
+    private int weaponShopSlot;
     private int selectedLoadoutSlot = -1;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -38,6 +42,8 @@ public sealed class GameMenu : MonoBehaviour
         menuOpen = true;
         loadoutOpen = false;
         playModeOpen = false;
+        shopOpen = false;
+        questsOpen = false;
         selectedLoadoutSlot = -1;
         Time.timeScale = 0f;
         movement.enabled = false;
@@ -77,12 +83,16 @@ public sealed class GameMenu : MonoBehaviour
 
         GUIStyle title = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 44, fontStyle = FontStyle.Bold };
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
 
         if (loadoutOpen)
             DrawLoadout();
         else if (playModeOpen)
             DrawModeSelection();
+        else if (shopOpen)
+            DrawShop();
+        else if (questsOpen)
+            DrawQuests();
         else
             DrawMainMenu();
     }
@@ -90,10 +100,12 @@ public sealed class GameMenu : MonoBehaviour
     private void DrawMainMenu()
     {
         float x = Screen.width * 0.5f - 120f;
-        float y = Screen.height * 0.5f - 25f;
+        float y = Screen.height * 0.5f - 90f;
         if (GUI.Button(new Rect(x, y, 240f, 48f), "PLAY MODE")) playModeOpen = true;
         if (GUI.Button(new Rect(x, y + 62f, 240f, 48f), "LOADOUT")) { loadoutOpen = true; selectedLoadoutSlot = -1; }
-        GUI.Label(new Rect(x - 80f, y + 130f, 400f, 30f), "Press Escape during play to return here", CenteredStyle(14));
+        if (GUI.Button(new Rect(x, y + 124f, 240f, 48f), "BLACK MARKET")) shopOpen = true;
+        if (GUI.Button(new Rect(x, y + 186f, 240f, 48f), "QUEST BOARD")) questsOpen = true;
+        GUI.Label(new Rect(x - 80f, y + 246f, 400f, 30f), "Press Escape during play to return here", CenteredStyle(14));
     }
 
     private void DrawModeSelection()
@@ -124,8 +136,11 @@ public sealed class GameMenu : MonoBehaviour
             int row = i < 3 ? 0 : 1;
             float rowWidth = columns * cardWidth + (columns - 1) * gap;
             Rect card = new Rect((Screen.width - rowWidth) * 0.5f + column * (cardWidth + gap), 150f + row * (cardHeight + gap), cardWidth, cardHeight);
+            bool unlocked = EconomyManager.Instance == null || EconomyManager.Instance.IsModeUnlocked(i);
             GUI.backgroundColor = new Color(0.1f, 0.15f, 0.19f);
+            GUI.enabled = unlocked;
             if (GUI.Button(card, "")) StartGame((GameModeManager.Mode)i);
+            GUI.enabled = true;
             GUI.backgroundColor = Color.white;
             GUI.color = accents[i];
             GUI.DrawTexture(new Rect(card.x, card.y, 5f, card.height), Texture2D.whiteTexture);
@@ -138,9 +153,170 @@ public sealed class GameMenu : MonoBehaviour
             description.wordWrap = true;
             description.normal.textColor = new Color(0.78f, 0.84f, 0.88f);
             GUI.Label(new Rect(card.x + 18f, card.y + 58f, card.width - 36f, 76f), descriptions[i], description);
+            if (!unlocked)
+            {
+                GUIStyle locked = CenteredStyle(14);
+                locked.fontStyle = FontStyle.Bold;
+                locked.normal.textColor = new Color(1f, 0.72f, 0.2f);
+                GUI.Label(new Rect(card.x, card.y + 130f, card.width, 24f), $"LOCKED  ◆ {EconomyManager.ModePrices[i]}", locked);
+            }
         }
 
         if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) playModeOpen = false;
+    }
+
+    private void DrawShop()
+    {
+        EconomyManager economy = EconomyManager.Instance;
+        if (economy == null) return;
+        GUI.Label(new Rect(0f, 82f, Screen.width, 38f), "BLACK MARKET", CenteredStyle(27));
+        GUIStyle balance = CenteredStyle(18);
+        balance.normal.textColor = new Color(1f, 0.78f, 0.18f);
+        GUI.Label(new Rect(Screen.width - 270f, 28f, 240f, 38f), $"◆ {economy.Money:N0} CREDITS", balance);
+
+        string[] categories = { "MODES", "CLASSES", "WEAPONS", "PERKS" };
+        float tabWidth = 155f;
+        float tabStart = (Screen.width - tabWidth * categories.Length) * 0.5f;
+        for (int i = 0; i < categories.Length; i++)
+        {
+            GUI.backgroundColor = shopCategory == i ? new Color(0.16f, 0.65f, 0.9f) : new Color(0.12f, 0.18f, 0.22f);
+            if (GUI.Button(new Rect(tabStart + i * tabWidth, 124f, tabWidth - 6f, 40f), categories[i])) shopCategory = i;
+        }
+        GUI.backgroundColor = Color.white;
+
+        if (shopCategory == 0) DrawModeShop(economy);
+        else if (shopCategory == 1) DrawClassShop(economy);
+        else if (shopCategory == 2) DrawWeaponShop(economy);
+        else DrawPerkShop(economy);
+        if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) shopOpen = false;
+    }
+
+    private static void DrawModeShop(EconomyManager economy)
+    {
+        string[] names = { "CLASSIC", "FORTRESS", "STRONG", "CONVOY", "CAMPAIGN" };
+        string[] subtitles = { "Wave survival", "Base warfare", "One-person army", "Escort operation", "Six-mission story" };
+        float width = Mathf.Min(220f, (Screen.width - 80f) / 5f);
+        float start = (Screen.width - width * 5f) * 0.5f;
+        for (int i = 0; i < names.Length; i++)
+        {
+            Rect card = new Rect(start + i * width, 195f, width - 12f, 190f);
+            bool owned = economy.IsModeUnlocked(i);
+            DrawStoreCard(card, names[i], subtitles[i], owned, EconomyManager.ModePrices[i]);
+            if (!owned && GUI.Button(new Rect(card.x + 18f, card.y + 136f, card.width - 36f, 38f), $"BUY  ◆ {EconomyManager.ModePrices[i]}")) economy.BuyMode(i);
+        }
+    }
+
+    private static void DrawClassShop(EconomyManager economy)
+    {
+        string[] names = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE" };
+        string[] roles = { "Balanced fighter", "Heavy frontline", "Build and defend", "Long-range expert", "Explosives master", "Fast tactical agent", "Black-powder bruiser" };
+        float width = 210f;
+        for (int i = 0; i < names.Length; i++)
+        {
+            int columns = i < 4 ? 4 : 3;
+            int column = i < 4 ? i : i - 4;
+            int row = i < 4 ? 0 : 1;
+            float start = (Screen.width - columns * width) * 0.5f;
+            Rect card = new Rect(start + column * width, 185f + row * 185f, width - 12f, 165f);
+            bool owned = economy.IsClassUnlocked(i);
+            DrawStoreCard(card, names[i], roles[i], owned, EconomyManager.ClassPrices[i]);
+            if (!owned && GUI.Button(new Rect(card.x + 16f, card.y + 112f, card.width - 32f, 36f), $"BUY  ◆ {EconomyManager.ClassPrices[i]}")) economy.BuyClass(i);
+        }
+    }
+
+    private void DrawWeaponShop(EconomyManager economy)
+    {
+        string[] slots = { "PRIMARY", "SECONDARY", "MELEE", "UTILITY" };
+        float start = Screen.width * 0.5f - 260f;
+        for (int i = 0; i < 4; i++)
+        {
+            GUI.backgroundColor = weaponShopSlot == i ? new Color(0.75f, 0.34f, 0.12f) : new Color(0.14f, 0.18f, 0.21f);
+            if (GUI.Button(new Rect(start + i * 130f, 178f, 124f, 36f), slots[i])) weaponShopSlot = i;
+        }
+        GUI.backgroundColor = Color.white;
+        int count = weapons.GetLoadoutOptionCount(weaponShopSlot);
+        float width = 210f;
+        float height = 98f;
+        int columns = Mathf.Min(5, count);
+        float gridStart = (Screen.width - columns * width) * 0.5f;
+        for (int i = 0; i < count; i++)
+        {
+            int row = i / 5;
+            int column = i % 5;
+            string name = weapons.GetLoadoutOptionName(weaponShopSlot, i);
+            Rect card = new Rect(gridStart + column * width, 230f + row * (height + 10f), width - 10f, height);
+            bool owned = economy.IsWeaponUnlocked(weaponShopSlot, i);
+            GUI.color = owned ? new Color(0.08f, 0.22f, 0.18f, 0.95f) : new Color(0.08f, 0.11f, 0.14f, 0.95f);
+            GUI.DrawTexture(card, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(card.x + 8f, card.y + 7f, card.width - 16f, 38f), name, CenteredStyle(13));
+            if (owned) GUI.Label(new Rect(card.x, card.y + 55f, card.width, 28f), "OWNED", CenteredStyle(12));
+            else if (GUI.Button(new Rect(card.x + 15f, card.y + 52f, card.width - 30f, 32f), $"BUY  ◆ {economy.WeaponPrice(weaponShopSlot, i)}")) economy.BuyWeapon(weaponShopSlot, i, name);
+        }
+    }
+
+    private static void DrawPerkShop(EconomyManager economy)
+    {
+        float width = 245f;
+        float start = (Screen.width - width * EconomyManager.PerkNames.Length) * 0.5f;
+        for (int i = 0; i < EconomyManager.PerkNames.Length; i++)
+        {
+            Rect card = new Rect(start + i * width, 200f, width - 14f, 190f);
+            bool owned = economy.IsPerkUnlocked(i);
+            DrawStoreCard(card, EconomyManager.PerkNames[i], EconomyManager.PerkDescriptions[i], owned, EconomyManager.PerkPrices[i]);
+            if (!owned && GUI.Button(new Rect(card.x + 16f, card.y + 136f, card.width - 32f, 38f), $"BUY  ◆ {EconomyManager.PerkPrices[i]}")) economy.BuyPerk(i);
+        }
+    }
+
+    private static void DrawStoreCard(Rect card, string title, string description, bool owned, int price)
+    {
+        GUI.color = owned ? new Color(0.05f, 0.24f, 0.18f, 0.96f) : new Color(0.07f, 0.1f, 0.14f, 0.96f);
+        GUI.DrawTexture(card, Texture2D.whiteTexture);
+        GUI.color = owned ? new Color(0.2f, 1f, 0.62f) : new Color(0.3f, 0.78f, 1f);
+        GUI.DrawTexture(new Rect(card.x, card.y, card.width, 4f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle titleStyle = CenteredStyle(17);
+        titleStyle.fontStyle = FontStyle.Bold;
+        GUI.Label(new Rect(card.x + 8f, card.y + 18f, card.width - 16f, 30f), title, titleStyle);
+        GUIStyle descriptionStyle = CenteredStyle(13);
+        descriptionStyle.wordWrap = true;
+        descriptionStyle.normal.textColor = new Color(0.72f, 0.8f, 0.84f);
+        GUI.Label(new Rect(card.x + 12f, card.y + 54f, card.width - 24f, 58f), description, descriptionStyle);
+        if (owned) GUI.Label(new Rect(card.x, card.y + card.height - 42f, card.width, 28f), "OWNED", CenteredStyle(13));
+    }
+
+    private void DrawQuests()
+    {
+        EconomyManager economy = EconomyManager.Instance;
+        if (economy == null) return;
+        GUI.Label(new Rect(0f, 82f, Screen.width, 42f), "QUEST BOARD", CenteredStyle(27));
+        GUI.Label(new Rect(0f, 118f, Screen.width, 28f), "Complete contracts. Claim credits. Expand your arsenal.", CenteredStyle(14));
+        float width = Mathf.Min(720f, Screen.width - 50f);
+        float x = (Screen.width - width) * 0.5f;
+        for (int i = 0; i < economy.QuestCount; i++)
+        {
+            Rect card = new Rect(x, 165f + i * 105f, width, 88f);
+            int progress = economy.QuestProgress(i);
+            int goal = economy.QuestGoal(i);
+            bool claimed = economy.IsQuestClaimed(i);
+            GUI.color = claimed ? new Color(0.05f, 0.2f, 0.14f, 0.92f) : new Color(0.07f, 0.11f, 0.15f, 0.96f);
+            GUI.DrawTexture(card, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUIStyle questTitle = new GUIStyle(GUI.skin.label) { fontSize = 17, fontStyle = FontStyle.Bold };
+            questTitle.normal.textColor = new Color(0.3f, 0.78f, 1f);
+            GUI.Label(new Rect(card.x + 18f, card.y + 10f, 250f, 26f), economy.QuestName(i), questTitle);
+            GUI.Label(new Rect(card.x + 18f, card.y + 38f, 400f, 24f), economy.QuestDescription(i));
+            GUI.Label(new Rect(card.x + 430f, card.y + 14f, 105f, 26f), $"{progress} / {goal}", CenteredStyle(15));
+            GUI.Label(new Rect(card.x + 430f, card.y + 43f, 105f, 24f), $"◆ {economy.QuestReward(i)}", CenteredStyle(14));
+            if (claimed) GUI.Label(new Rect(card.x + width - 165f, card.y + 24f, 140f, 38f), "CLAIMED", CenteredStyle(14));
+            else
+            {
+                GUI.enabled = progress >= goal;
+                if (GUI.Button(new Rect(card.x + width - 165f, card.y + 24f, 140f, 38f), "CLAIM REWARD")) economy.ClaimQuest(i);
+                GUI.enabled = true;
+            }
+        }
+        if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) questsOpen = false;
     }
 
     private void DrawLoadout()
@@ -170,12 +346,16 @@ public sealed class GameMenu : MonoBehaviour
         for (int classIndex = 0; classIndex < classNames.Length; classIndex++)
         {
             bool active = (int)weapons.CurrentClass == classIndex;
+            bool unlocked = EconomyManager.Instance == null || EconomyManager.Instance.IsClassUnlocked(classIndex);
             GUI.backgroundColor = active ? new Color(0.2f, 0.75f, 0.3f) : new Color(0.16f, 0.2f, 0.23f);
-            if (GUI.Button(new Rect(startX + classIndex * classWidth + 3f, y + 10f, classWidth - 7f, 54f), classNames[classIndex], classStyle))
+            GUI.enabled = unlocked;
+            string classLabel = unlocked ? classNames[classIndex] : $"LOCKED\n{classNames[classIndex]}";
+            if (GUI.Button(new Rect(startX + classIndex * classWidth + 3f, y + 10f, classWidth - 7f, 54f), classLabel, classStyle))
             {
                 weapons.SetPlayerClass((SimpleRifle.PlayerClass)classIndex);
                 selectedLoadoutSlot = -1;
             }
+            GUI.enabled = true;
         }
         GUI.backgroundColor = Color.white;
     }
@@ -212,18 +392,22 @@ public sealed class GameMenu : MonoBehaviour
         {
             int weapon = weapons.GetClassOptionIndex(slot, option);
             bool selected = weapons.IsLoadoutSelection(slot, weapon);
+            bool unlocked = EconomyManager.Instance == null || EconomyManager.Instance.IsWeaponUnlocked(slot, weapon);
             Rect card = new Rect(x + option * (cardWidth + gap), 285f, cardWidth, 220f);
             GUI.backgroundColor = selected ? new Color(0.15f, 0.65f, 0.9f) : new Color(0.14f, 0.19f, 0.22f);
+            GUI.enabled = unlocked;
             if (GUI.Button(card, ""))
             {
                 weapons.SetLoadoutSlot(slot, weapon);
                 selectedLoadoutSlot = -1;
             }
+            GUI.enabled = true;
             GUI.backgroundColor = Color.white;
             string weaponName = weapons.GetLoadoutOptionName(slot, weapon);
             DrawWeaponIcon(new Rect(card.x + 22f, card.y + 30f, card.width - 44f, 105f), slot, weaponName);
             GUI.Label(new Rect(card.x + 8f, card.y + 145f, card.width - 16f, 48f), weaponName, CenteredStyle(16));
             if (selected) GUI.Label(new Rect(card.x, card.y + 194f, card.width, 20f), "EQUIPPED", CenteredStyle(12));
+            else if (!unlocked) GUI.Label(new Rect(card.x, card.y + 194f, card.width, 20f), "BUY IN BLACK MARKET", CenteredStyle(11));
         }
     }
 

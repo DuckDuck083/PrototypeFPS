@@ -14,6 +14,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     public bool IsDead => isDead;
     private float modeHealthMultiplier = 1f;
     private float healthRegeneration;
+    public float PerkDamageReduction { get; set; }
+    public float PerkRegeneration { get; set; }
 
     public void ApplyClassStats(SimpleRifle.PlayerClass playerClass)
     {
@@ -63,8 +65,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         if (Time.time >= lastStaminaUseTime + recoveryDelay)
             Stamina = Mathf.MoveTowards(Stamina, maximumStamina, staminaRecoveryPerSecond * Time.deltaTime);
 
-        if (healthRegeneration > 0f)
-            Health = Mathf.MoveTowards(Health, maximumHealth, healthRegeneration * Time.deltaTime);
+        if (healthRegeneration + PerkRegeneration > 0f)
+            Health = Mathf.MoveTowards(Health, maximumHealth, (healthRegeneration + PerkRegeneration) * Time.deltaTime);
 
         damageFlash = Mathf.MoveTowards(damageFlash, 0f, 1.8f * Time.deltaTime);
     }
@@ -87,6 +89,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         SimpleRifle weapons = GetComponent<SimpleRifle>();
         if (weapons != null && weapons.IsShieldBlocking)
             amount *= 0.2f;
+        amount *= 1f - Mathf.Clamp01(PerkDamageReduction);
 
         Health = Mathf.Max(0f, Health - amount);
         damageFlash = Mathf.Clamp01(damageFlash + amount / 35f);
@@ -116,6 +119,17 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
         Health = Mathf.Min(maximumHealth, Health + amount);
         return true;
+    }
+
+    public void RestoreForNewMode()
+    {
+        isDead = false;
+        respawnAt = 0f;
+        invulnerableUntil = Time.time + 2f;
+        Health = maximumHealth;
+        Stamina = maximumStamina;
+        CharacterController controller = GetComponent<CharacterController>();
+        if (controller != null && !controller.enabled) controller.enabled = true;
     }
 
     private void BeginRespawn()

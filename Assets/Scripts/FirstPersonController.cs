@@ -36,6 +36,7 @@ public sealed class FirstPersonController : MonoBehaviour
     private float cameraPitch;
     private float standingCameraHeight;
     private bool isCrouching;
+    public float PerkSpeedMultiplier { get; set; } = 1f;
 
     private void Awake()
     {
@@ -122,7 +123,7 @@ public sealed class FirstPersonController : MonoBehaviour
         bool wantsToSprint = !isCrouching && input.sqrMagnitude > 0.01f && sprintPressed;
         bool isSprinting = wantsToSprint && (playerVitals == null || playerVitals.UseSprintStamina());
         float weaponMovementMultiplier = GetComponent<SimpleRifle>() != null ? GetComponent<SimpleRifle>().MovementMultiplier : 1f;
-        float speed = (isCrouching ? crouchSpeed : isSprinting ? sprintSpeed : walkSpeed) * weaponMovementMultiplier;
+        float speed = (isCrouching ? crouchSpeed : isSprinting ? sprintSpeed : walkSpeed) * weaponMovementMultiplier * PerkSpeedMultiplier;
 
         if (characterController.isGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;

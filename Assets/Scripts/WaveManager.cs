@@ -126,7 +126,7 @@ public sealed class WaveManager : MonoBehaviour
         float damage = type == TrainingTarget.EnemyArchetype.Sniper ? 32f : type == TrainingTarget.EnemyArchetype.Demolition ? 20f : type == TrainingTarget.EnemyArchetype.Tank ? 4f : type == TrainingTarget.EnemyArchetype.Knife ? 14f : type == TrainingTarget.EnemyArchetype.Handgun ? 9f : 6f;
         TrainingTarget target = root.AddComponent<TrainingTarget>();
         target.Configure(true, (health + (waveEnemy ? CurrentWave * (tank ? 10f : 3f) : 0f)) * healthMultiplier, speed, damage * damageMultiplier);
-        if (waveEnemy) target.ConfigureWave(this, type);
+        target.ConfigureWave(waveEnemy ? this : null, type);
         return target;
     }
 
@@ -134,7 +134,7 @@ public sealed class WaveManager : MonoBehaviour
 
     public void ClearEnemies()
     {
-        foreach (TrainingTarget target in FindObjectsByType<TrainingTarget>(FindObjectsSortMode.None))
+        foreach (TrainingTarget target in FindObjectsByType<TrainingTarget>())
             if (target.IsHostile) Destroy(target.gameObject);
         EnemiesRemaining = 0;
     }
@@ -151,6 +151,7 @@ public sealed class WaveManager : MonoBehaviour
 
     public void SaveProgress()
     {
+        if (CurrentWave <= 0) return;
         PlayerPrefs.SetInt(SavedWaveKey, Mathf.Max(1, CurrentWave));
         PlayerPrefs.Save();
     }

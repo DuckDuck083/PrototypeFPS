@@ -37,6 +37,10 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private float poisonUntil;
     private float nextPoisonTick;
     private float poisonDamage;
+    private bool guardsPost;
+    private Vector3 guardPost;
+    private bool destroyAfterDefeat;
+    private DestructibleObjective attackObjective;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -57,6 +61,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     public void ConfigureWave(WaveManager manager, EnemyArchetype enemyType)
     {
         waveManager = manager;
+        destroyAfterDefeat = true;
         archetype = enemyType;
         usesRangedWeapon = enemyType == EnemyArchetype.Handgun || enemyType == EnemyArchetype.Rifle
             || enemyType == EnemyArchetype.Sniper || enemyType == EnemyArchetype.Demolition || enemyType == EnemyArchetype.Tank;
@@ -75,6 +80,17 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             : enemyType == EnemyArchetype.Tank ? 100
             : 0;
         weaponAmmo = maximumWeaponAmmo;
+    }
+
+    public void ConfigureGuardPost(Vector3 position)
+    {
+        guardsPost = true;
+        guardPost = position;
+    }
+
+    public void ConfigureAttackObjective(DestructibleObjective objective)
+    {
+        attackObjective = objective;
     }
 
     private void Awake()
@@ -110,7 +126,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             return;
 
         if (aggroTurret == null) turretThreat = 0f;
-        Transform attackTarget = aggroTurret != null ? aggroTurret.transform : player.transform;
+        Transform attackTarget = aggroTurret != null ? aggroTurret.transform
+            : attackObjective != null && !attackObjective.IsDestroyed ? attackObjective.transform
+            : player.transform;
         Vector3 offset = attackTarget.position - transform.position;
         offset.y = 0f;
         float distance = offset.magnitude;
@@ -122,6 +140,20 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             : archetype == EnemyArchetype.Knife ? 1.7f : 1.35f;
         if (distance > desiredRange)
         {
+            if (guardsPost)
+            {
+                Vector3 returnOffset = guardPost - transform.position;
+                returnOffset.y = 0f;
+                if (returnOffset.magnitude > 1f)
+                {
+                    Vector3 returnDirection = GetSteeringDirection(returnOffset.normalized);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(returnDirection), 8f * Time.deltaTime);
+                    controller.Move(returnDirection * moveSpeed * Time.deltaTime + Vector3.down * 2f * Time.deltaTime);
+                }
+                else if (offset.sqrMagnitude > 0.01f)
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(offset.normalized), 5f * Time.deltaTime);
+                return;
+            }
             Vector3 direction = GetSteeringDirection(offset.normalized);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), 8f * Time.deltaTime);
             controller.Move(direction * moveSpeed * Time.deltaTime + Vector3.down * 2f * Time.deltaTime);
@@ -139,6 +171,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             {
                 if (aggroTurret != null)
                     aggroTurret.TakeDamage(attackDamage);
+                else if (attackObjective != null && !attackObjective.IsDestroyed)
+                    attackObjective.TakeDamage(attackDamage);
                 else if (archetype == EnemyArchetype.Demolition)
                     player.TakeExplosiveDamage(attackDamage, transform.position);
                 else
@@ -199,7 +233,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             if (hit.collider.transform.root == transform) continue;
             return targetTransform == player.transform
                 ? hit.collider.GetComponentInParent<PlayerVitals>() != null
-                : hit.collider.GetComponentInParent<EngineerTurret>() == aggroTurret;
+                : aggroTurret != null
+                    ? hit.collider.GetComponentInParent<EngineerTurret>() == aggroTurret
+                    : hit.collider.GetComponentInParent<DestructibleObjective>() == attackObjective;
         }
         return true;
     }
@@ -237,6 +273,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         health -= amount;
         if (health <= 0f)
         {
+            if (followsPlayer) EconomyManager.Instance?.RewardEnemy(archetype);
             dead = true;
             respawnTime = Time.time + respawnDelay;
             controller.enabled = false;
@@ -279,7 +316,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
 
     private void Respawn()
     {
-        if (waveManager != null)
+        if (waveManager != null || destroyAfterDefeat)
         {
             Destroy(gameObject);
             return;

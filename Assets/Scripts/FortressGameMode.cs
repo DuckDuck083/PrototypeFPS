@@ -7,7 +7,7 @@ public sealed class FortressGameMode : GameModeBase
     private DestructibleObjective playerFortress;
     private DestructibleObjective enemyFortress;
     private float nextRespawn;
-    private float nextSiegeTick;
+    private int respawnSlot;
 
     public override void Begin(GameModeManager manager)
     {
@@ -22,24 +22,68 @@ public sealed class FortressGameMode : GameModeBase
     private void Update()
     {
         if (playerFortress == null || enemyFortress == null || playerFortress.IsDestroyed || enemyFortress.IsDestroyed) return;
-        if (LivingEnemies() < 10 && Time.time >= nextRespawn)
+        int living = LivingEnemies();
+        if (living < 10 && nextRespawn <= 0f)
+            nextRespawn = Time.time + 5f;
+        if (living < 10 && Time.time >= nextRespawn)
         {
             nextRespawn = Time.time + 5f;
-            SpawnDefender(Random.Range(0, 10));
+            SpawnDefender(respawnSlot++ % 10);
         }
-        if (Time.time >= nextSiegeTick)
-        {
-            nextSiegeTick = Time.time + 1f;
-            foreach (TrainingTarget enemy in FindObjectsByType<TrainingTarget>(FindObjectsSortMode.None))
-                if (enemy.IsHostile && enemy.IsAlive && Vector3.Distance(enemy.transform.position, playerFortress.transform.position) < 16f)
-                    playerFortress.TakeDamage(12f);
-        }
+        else if (living >= 10) nextRespawn = 0f;
     }
 
     private void SpawnDefender(int index)
     {
-        float x = -18f + (index % 5) * 9f;
-        Spawn(index % 4 == 0 ? TrainingTarget.EnemyArchetype.Rifle : TrainingTarget.EnemyArchetype.Normal, new Vector3(x, 0f, 42f + (index / 5) * 8f));
+        TrainingTarget.EnemyArchetype type;
+        Vector3 position;
+        bool guard;
+        if (index < 3)
+        {
+            type = TrainingTarget.EnemyArchetype.Rifle;
+            position = new Vector3(-10f + index * 10f, 0f, 43f);
+            guard = true;
+        }
+        else if (index < 6)
+        {
+            type = TrainingTarget.EnemyArchetype.Sniper;
+            position = new Vector3(-14f + (index - 3) * 14f, 0f, 52f);
+            guard = true;
+        }
+        else
+        {
+            TrainingTarget.EnemyArchetype[] scattered =
+            {
+                TrainingTarget.EnemyArchetype.Handgun, TrainingTarget.EnemyArchetype.Handgun,
+                TrainingTarget.EnemyArchetype.Normal, TrainingTarget.EnemyArchetype.Knife
+            };
+            type = scattered[index - 6];
+            position = new Vector3(Random.Range(-25f, 26f), 0f, Random.Range(30f, 57f));
+            guard = false;
+        }
+        TrainingTarget defender = Spawn(type, position);
+        if (guard) defender.ConfigureGuardPost(position);
+        else defender.ConfigureAttackObjective(playerFortress);
+    }
+
+    private void OnGUI()
+    {
+        if (playerFortress == null || enemyFortress == null) return;
+        DrawFortBar(new Rect(24f, 24f, 310f, 28f), playerFortress, new Color(0.08f, 0.55f, 1f), "YOUR FORTRESS");
+        DrawFortBar(new Rect(Screen.width - 334f, 24f, 310f, 28f), enemyFortress, new Color(0.95f, 0.15f, 0.08f), "ENEMY FORTRESS");
+    }
+
+    private static void DrawFortBar(Rect rect, DestructibleObjective fortress, Color color, string label)
+    {
+        float fill = fortress.MaximumHealth <= 0f ? 0f : fortress.Health / fortress.MaximumHealth;
+        GUI.color = new Color(0f, 0f, 0f, 0.82f);
+        GUI.DrawTexture(rect, Texture2D.whiteTexture);
+        GUI.color = color;
+        GUI.DrawTexture(new Rect(rect.x + 3f, rect.y + 3f, (rect.width - 6f) * Mathf.Clamp01(fill), rect.height - 6f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = 13 };
+        style.normal.textColor = Color.white;
+        GUI.Label(rect, $"{label}  {Mathf.CeilToInt(fortress.Health)} / {Mathf.CeilToInt(fortress.MaximumHealth)}", style);
     }
 
     private static DestructibleObjective CreateFortress(string name, Vector3 position, Color color)
