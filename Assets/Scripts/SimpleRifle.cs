@@ -10,6 +10,7 @@ public sealed class SimpleRifle : MonoBehaviour
     [Header("References")]
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private Camera playerCamera;
+    [SerializeField] private GameObject assault1Prefab;
 
     [Header("Rifle")]
     [SerializeField, Min(1)] private int rifleMagazineSize = 30;
@@ -294,7 +295,18 @@ public sealed class SimpleRifle : MonoBehaviour
         Material dark = CreateMaterial(new Color(0.07f, 0.08f, 0.09f));
         Material metal = CreateMaterial(new Color(0.2f, 0.23f, 0.26f));
 
-        if (slotIndex == 0)
+        if (slotIndex == 0 && option == 1 && assault1Prefab != null)
+        {
+            GameObject weaponModel = Instantiate(assault1Prefab, model);
+            weaponModel.name = "Assault1 Rocket Launcher Model";
+            weaponModel.transform.localPosition = new Vector3(0f, -0.08f, 0.28f);
+            weaponModel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            weaponModel.transform.localScale = Vector3.one * 0.7f;
+            foreach (Collider modelCollider in weaponModel.GetComponentsInChildren<Collider>(true))
+                Destroy(modelCollider);
+            return;
+        }
+        else if (slotIndex == 0)
         {
             float length = option == 1 ? 1.15f : option == 2 ? 0.62f : option == 3 ? 0.9f : 0.72f;
             float width = option == 1 ? 0.24f : option == 3 ? 0.2f : 0.15f;
@@ -1271,11 +1283,7 @@ public sealed class SimpleRifle : MonoBehaviour
         Material dark = CreateMaterial(new Color(0.08f, 0.09f, 0.1f));
         Material metal = CreateMaterial(new Color(0.2f, 0.22f, 0.24f));
 
-        rifleModel = CreateModelRoot("Rocket Launcher");
-        AddPart(rifleModel, "Tube", new Vector3(0f, 0f, 0.35f), new Vector3(0.22f, 0.22f, 1.15f), metal);
-        AddPart(rifleModel, "Muzzle", new Vector3(0f, 0f, 0.96f), new Vector3(0.31f, 0.31f, 0.12f), dark);
-        AddPart(rifleModel, "Grip", new Vector3(0f, -0.2f, 0.2f), new Vector3(0.11f, 0.3f, 0.13f), dark, 8f);
-        AddPart(rifleModel, "Sight", new Vector3(0f, 0.16f, 0.36f), new Vector3(0.08f, 0.08f, 0.2f), dark);
+        rifleModel = CreateModelRoot("Primary Weapon");
 
         handgunModel = CreateModelRoot("Riot Shield");
         AddPart(handgunModel, "Shield Left", new Vector3(-0.28f, 0.05f, 0.2f), new Vector3(0.19f, 0.95f, 0.08f), metal);
