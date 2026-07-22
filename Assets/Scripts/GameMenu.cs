@@ -8,6 +8,7 @@ public sealed class GameMenu : MonoBehaviour
     private PlayerVitals vitals;
     private bool menuOpen = true;
     private bool loadoutOpen;
+    private bool playModeOpen;
     private int selectedLoadoutSlot = -1;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -36,6 +37,7 @@ public sealed class GameMenu : MonoBehaviour
     {
         menuOpen = true;
         loadoutOpen = false;
+        playModeOpen = false;
         selectedLoadoutSlot = -1;
         Time.timeScale = 0f;
         movement.enabled = false;
@@ -45,8 +47,11 @@ public sealed class GameMenu : MonoBehaviour
         Cursor.visible = true;
     }
 
-    private void StartGame()
+    private void StartGame(GameModeManager.Mode mode)
     {
+        GameModeManager manager = FindAnyObjectByType<GameModeManager>();
+        if (manager == null) return;
+        manager.StartMode(mode);
         menuOpen = false;
         Time.timeScale = 1f;
         vitals.enabled = true;
@@ -72,10 +77,12 @@ public sealed class GameMenu : MonoBehaviour
 
         GUIStyle title = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 44, fontStyle = FontStyle.Bold };
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
 
         if (loadoutOpen)
             DrawLoadout();
+        else if (playModeOpen)
+            DrawModeSelection();
         else
             DrawMainMenu();
     }
@@ -84,9 +91,56 @@ public sealed class GameMenu : MonoBehaviour
     {
         float x = Screen.width * 0.5f - 120f;
         float y = Screen.height * 0.5f - 25f;
-        if (GUI.Button(new Rect(x, y, 240f, 48f), "START TRAINING")) StartGame();
+        if (GUI.Button(new Rect(x, y, 240f, 48f), "PLAY MODE")) playModeOpen = true;
         if (GUI.Button(new Rect(x, y + 62f, 240f, 48f), "LOADOUT")) { loadoutOpen = true; selectedLoadoutSlot = -1; }
         GUI.Label(new Rect(x - 80f, y + 130f, 400f, 30f), "Press Escape during play to return here", CenteredStyle(14));
+    }
+
+    private void DrawModeSelection()
+    {
+        string[] names = { "CLASSIC", "FORTRESS", "STRONG", "CONVOY", "CAMPAIGN" };
+        string[] descriptions =
+        {
+            "Standard wave survival.\nEnemies grow stronger every wave.",
+            "1 vs 10. Attack the enemy fortress,\ndefend yours, and stop reinforcements.",
+            "1 vs 20–30 with boosted health, damage,\nand regeneration. Best of three rounds.",
+            "Escort a top-secret briefcase with four\nAI bodyguards and reach extraction.",
+            "A six-mission story across outposts, forests,\nprisons, cities, laboratories, and the capital."
+        };
+        Color[] accents =
+        {
+            new Color(0.18f, 0.65f, 0.95f), new Color(0.95f, 0.42f, 0.16f), new Color(0.68f, 0.28f, 0.95f),
+            new Color(0.16f, 0.78f, 0.52f), new Color(0.95f, 0.72f, 0.18f)
+        };
+
+        GUI.Label(new Rect(0f, 86f, Screen.width, 42f), "SELECT GAME MODE", CenteredStyle(26));
+        float cardWidth = Mathf.Min(330f, (Screen.width - 80f) / 3f);
+        float cardHeight = 160f;
+        float gap = 18f;
+        for (int i = 0; i < names.Length; i++)
+        {
+            int columns = i < 3 ? 3 : 2;
+            int column = i < 3 ? i : i - 3;
+            int row = i < 3 ? 0 : 1;
+            float rowWidth = columns * cardWidth + (columns - 1) * gap;
+            Rect card = new Rect((Screen.width - rowWidth) * 0.5f + column * (cardWidth + gap), 150f + row * (cardHeight + gap), cardWidth, cardHeight);
+            GUI.backgroundColor = new Color(0.1f, 0.15f, 0.19f);
+            if (GUI.Button(card, "")) StartGame((GameModeManager.Mode)i);
+            GUI.backgroundColor = Color.white;
+            GUI.color = accents[i];
+            GUI.DrawTexture(new Rect(card.x, card.y, 5f, card.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUIStyle modeTitle = CenteredStyle(21);
+            modeTitle.fontStyle = FontStyle.Bold;
+            modeTitle.normal.textColor = accents[i];
+            GUI.Label(new Rect(card.x + 14f, card.y + 18f, card.width - 28f, 30f), names[i], modeTitle);
+            GUIStyle description = CenteredStyle(14);
+            description.wordWrap = true;
+            description.normal.textColor = new Color(0.78f, 0.84f, 0.88f);
+            GUI.Label(new Rect(card.x + 18f, card.y + 58f, card.width - 36f, 76f), descriptions[i], description);
+        }
+
+        if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) playModeOpen = false;
     }
 
     private void DrawLoadout()

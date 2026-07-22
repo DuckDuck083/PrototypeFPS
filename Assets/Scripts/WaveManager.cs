@@ -9,11 +9,24 @@ public sealed class WaveManager : MonoBehaviour
     private bool waitingForNextWave;
     private int spawnSequence;
     private float nextReconcileTime;
+    private bool running;
 
-    private void Start() => StartWave(Mathf.Max(1, PlayerPrefs.GetInt(SavedWaveKey, 1)));
+    public void BeginClassic()
+    {
+        ClearEnemies();
+        running = true;
+        StartWave(Mathf.Max(1, PlayerPrefs.GetInt(SavedWaveKey, 1)));
+    }
+
+    public void StopMode()
+    {
+        running = false;
+        waitingForNextWave = false;
+    }
 
     private void Update()
     {
+        if (!running) return;
         if (Time.time >= nextReconcileTime)
         {
             nextReconcileTime = Time.time + 1f;
@@ -72,7 +85,7 @@ public sealed class WaveManager : MonoBehaviour
         return new Vector3(0f, 0f, 22f + index % 5 * 3f);
     }
 
-    private void CreateEnemy(TrainingTarget.EnemyArchetype type, Vector3 position)
+    public TrainingTarget SpawnEnemy(TrainingTarget.EnemyArchetype type, Vector3 position, float healthMultiplier = 1f, float damageMultiplier = 1f, bool waveEnemy = false)
     {
         GameObject root = new GameObject(type + " Enemy");
         root.transform.position = position;
@@ -112,8 +125,18 @@ public sealed class WaveManager : MonoBehaviour
         float speed = type == TrainingTarget.EnemyArchetype.Tank ? 1.05f : type == TrainingTarget.EnemyArchetype.Knife ? 4.1f : type == TrainingTarget.EnemyArchetype.Sniper ? 1.35f : 2.35f;
         float damage = type == TrainingTarget.EnemyArchetype.Sniper ? 32f : type == TrainingTarget.EnemyArchetype.Demolition ? 20f : type == TrainingTarget.EnemyArchetype.Tank ? 4f : type == TrainingTarget.EnemyArchetype.Knife ? 14f : type == TrainingTarget.EnemyArchetype.Handgun ? 9f : 6f;
         TrainingTarget target = root.AddComponent<TrainingTarget>();
-        target.Configure(true, health + CurrentWave * (tank ? 10f : 3f), speed, damage);
-        target.ConfigureWave(this, type);
+        target.Configure(true, (health + (waveEnemy ? CurrentWave * (tank ? 10f : 3f) : 0f)) * healthMultiplier, speed, damage * damageMultiplier);
+        if (waveEnemy) target.ConfigureWave(this, type);
+        return target;
+    }
+
+    private void CreateEnemy(TrainingTarget.EnemyArchetype type, Vector3 position) => SpawnEnemy(type, position, 1f, 1f, true);
+
+    public void ClearEnemies()
+    {
+        foreach (TrainingTarget target in FindObjectsByType<TrainingTarget>(FindObjectsSortMode.None))
+            if (target.IsHostile) Destroy(target.gameObject);
+        EnemiesRemaining = 0;
     }
 
     public void NotifyEnemyDefeated(TrainingTarget target)
@@ -134,6 +157,7 @@ public sealed class WaveManager : MonoBehaviour
 
     private void OnGUI()
     {
+        if (!running) return;
         GUIStyle style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 20, fontStyle = FontStyle.Bold };
         style.normal.textColor = Color.white;
         GUI.color = new Color(0f, 0f, 0f, 0.72f);

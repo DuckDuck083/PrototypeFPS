@@ -89,6 +89,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private const float FalloffStart = 9f;
     private const float FalloffEnd = 58f;
     private const float MinimumFalloffMultiplier = 0.35f;
+    public float ModeDamageMultiplier { get; set; } = 1f;
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (IsSniperRifleEquipped ? sniperScopeToggled : aimAction.IsPressed());
     private bool IsSniperRifleEquipped => (currentSlot == 3 && slotSelections[3] == 0) || (currentSlot == 0 && slotSelections[0] == 6);
@@ -1174,7 +1175,7 @@ public sealed class SimpleRifle : MonoBehaviour
         bool critical = (allowHeadshotCritical && hit.collider.gameObject.name == "Head") || Random.value < randomCritChance;
         float falloff = critical || ignoresFalloff ? 1f : GetDamageFalloff(hit.distance);
         float finalDamage = (critical ? baseDamage * 3f : baseDamage) * falloff;
-        damageable.TakeDamage(finalDamage);
+        damageable.TakeDamage(finalDamage * ModeDamageMultiplier);
 
         lastDamageAmount = finalDamage;
         lastHitWasCritical = critical;

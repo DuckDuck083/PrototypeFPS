@@ -7,7 +7,9 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         ImproveSceneLighting();
         BuildArena();
         CreateTarget("Training Dummy", new Vector3(0f, 0f, 9f), new Color(0.15f, 0.45f, 0.9f), false, 150f, 0f, 0f);
-        new GameObject("Wave Director").AddComponent<WaveManager>();
+        GameObject modeDirector = new GameObject("Game Mode Director");
+        modeDirector.AddComponent<WaveManager>();
+        modeDirector.AddComponent<GameModeManager>();
 
         CreatePickup(new Vector3(5f, 0.7f, 5f), ArenaPickup.PickupType.Health);
         CreatePickup(new Vector3(-18f, 0.7f, 10f), ArenaPickup.PickupType.Health);

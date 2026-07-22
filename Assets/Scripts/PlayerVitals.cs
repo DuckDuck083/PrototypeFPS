@@ -11,6 +11,9 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     public float Health { get; private set; }
     public float Stamina { get; private set; }
     public bool CanSprint => Stamina > 0.1f;
+    public bool IsDead => isDead;
+    private float modeHealthMultiplier = 1f;
+    private float healthRegeneration;
 
     public void ApplyClassStats(SimpleRifle.PlayerClass playerClass)
     {
@@ -19,6 +22,16 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
             : playerClass == SimpleRifle.PlayerClass.Demoman ? 130f
             : playerClass == SimpleRifle.PlayerClass.Pirate ? 140f
             : 100f;
+        maximumHealth *= modeHealthMultiplier;
+        Health = maximumHealth;
+    }
+
+    public void SetModeModifiers(float healthMultiplier, float regenerationPerSecond)
+    {
+        float baseHealth = maximumHealth / modeHealthMultiplier;
+        modeHealthMultiplier = Mathf.Max(1f, healthMultiplier);
+        maximumHealth = baseHealth * modeHealthMultiplier;
+        healthRegeneration = Mathf.Max(0f, regenerationPerSecond);
         Health = maximumHealth;
     }
 
@@ -49,6 +62,9 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
         if (Time.time >= lastStaminaUseTime + recoveryDelay)
             Stamina = Mathf.MoveTowards(Stamina, maximumStamina, staminaRecoveryPerSecond * Time.deltaTime);
+
+        if (healthRegeneration > 0f)
+            Health = Mathf.MoveTowards(Health, maximumHealth, healthRegeneration * Time.deltaTime);
 
         damageFlash = Mathf.MoveTowards(damageFlash, 0f, 1.8f * Time.deltaTime);
     }
