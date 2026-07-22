@@ -16,6 +16,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     private float healthRegeneration;
     public float PerkDamageReduction { get; set; }
     public float PerkRegeneration { get; set; }
+    public bool InfiniteHealth { get; set; }
 
     public void ApplyClassStats(SimpleRifle.PlayerClass playerClass)
     {
@@ -55,6 +56,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
     private void Update()
     {
+        if (InfiniteHealth && !isDead) Health = maximumHealth;
         if (isDead)
         {
             if (Time.time >= respawnAt)
@@ -83,7 +85,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
     public void TakeDamage(float amount)
     {
-        if (isDead || Time.time < invulnerableUntil)
+        if (InfiniteHealth || isDead || Time.time < invulnerableUntil)
             return;
 
         SimpleRifle weapons = GetComponent<SimpleRifle>();

@@ -91,6 +91,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private const float MinimumFalloffMultiplier = 0.35f;
     public float ModeDamageMultiplier { get; set; } = 1f;
     public float PerkDamageMultiplier { get; set; } = 1f;
+    public bool InfiniteAmmo { get; set; }
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (IsSniperRifleEquipped ? sniperScopeToggled : aimAction.IsPressed());
     private bool IsSniperRifleEquipped => (currentSlot == 3 && slotSelections[3] == 0) || (currentSlot == 0 && slotSelections[0] == 6);
@@ -165,6 +166,15 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void Update()
     {
+        if (InfiniteAmmo)
+        {
+            rifleAmmo = rifleMagazineSize;
+            rifleReserveAmmo = Mathf.Max(rifleReserveAmmo, 999);
+            handgunAmmo = handgunMagazineSize;
+            handgunReserveAmmo = Mathf.Max(handgunReserveAmmo, 999);
+            sniperAmmo = Mathf.Max(sniperAmmo, sniperMagazineSize);
+            sniperReserveAmmo = Mathf.Max(sniperReserveAmmo, 999);
+        }
         if (currentSlot == 2 && slotSelections[2] == 3 && aimAction.WasPressedThisFrame() && Time.time >= nextDashTime)
             ScytheDash();
 

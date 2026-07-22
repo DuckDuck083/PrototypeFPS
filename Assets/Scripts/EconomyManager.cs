@@ -5,6 +5,7 @@ public sealed class EconomyManager : MonoBehaviour
     private const string MoneyKey = "PrototypeFPS.Money";
     public static EconomyManager Instance { get; private set; }
     public int Money { get; private set; }
+    public bool DevModeUnlocked => PlayerPrefs.GetInt("PrototypeFPS.DevMode", 0) == 1;
     public string LastNotification { get; private set; }
     private float notificationUntil;
 
@@ -44,6 +45,33 @@ public sealed class EconomyManager : MonoBehaviour
     public bool BuyClass(int playerClass) => Buy($"PrototypeFPS.Unlock.Class.{playerClass}", ClassPrices[playerClass], $"CLASS UNLOCKED: {(SimpleRifle.PlayerClass)playerClass}", () => IsClassUnlocked(playerClass));
     public bool BuyWeapon(int slot, int weapon, string name) => Buy($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}", WeaponPrice(slot, weapon), $"WEAPON UNLOCKED: {name}", () => IsWeaponUnlocked(slot, weapon));
     public bool BuyPerk(int perk) => Buy($"PrototypeFPS.Unlock.Perk.{perk}", PerkPrices[perk], $"PERK ACQUIRED: {PerkNames[perk]}", () => IsPerkUnlocked(perk), ApplyPerks);
+
+    public string RedeemPromoCode(string code)
+    {
+        string normalized = (code ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized != "mustardmango") return "INVALID CODE";
+        if (DevModeUnlocked) return "DEV MODE ALREADY ACTIVE";
+        PlayerPrefs.SetInt("PrototypeFPS.DevMode", 1);
+        PlayerPrefs.Save();
+        Notify("DEVELOPER ACCESS GRANTED");
+        return "ACCESS GRANTED — ADMIN PANEL UNLOCKED";
+    }
+
+    public void AdminGrantMoney(int amount) => AddMoney(Mathf.Max(0, amount), $"ADMIN: +{amount:N0} CREDITS");
+
+    public void AdminUnlockAll()
+    {
+        for (int i = 0; i < ModePrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Mode.{i}", 1);
+        for (int i = 0; i < ClassPrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Class.{i}", 1);
+        int[] weaponCounts = { 13, 11, 9, 9 };
+        for (int slot = 0; slot < weaponCounts.Length; slot++)
+        for (int weapon = 0; weapon < weaponCounts[slot]; weapon++)
+            PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}", 1);
+        for (int i = 0; i < PerkPrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Perk.{i}", 1);
+        PlayerPrefs.Save();
+        ApplyPerks();
+        Notify("ADMIN: ALL CONTENT UNLOCKED");
+    }
 
     private bool Buy(string key, int price, string success, System.Func<bool> owned, System.Action afterPurchase = null)
     {

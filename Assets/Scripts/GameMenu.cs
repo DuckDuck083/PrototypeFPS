@@ -11,8 +11,12 @@ public sealed class GameMenu : MonoBehaviour
     private bool playModeOpen;
     private bool shopOpen;
     private bool questsOpen;
+    private bool promoOpen;
+    private bool adminOpen;
     private int shopCategory;
     private int weaponShopSlot;
+    private string promoCode = string.Empty;
+    private string promoStatus = "Enter a code to redeem a special reward.";
     private int selectedLoadoutSlot = -1;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -44,6 +48,8 @@ public sealed class GameMenu : MonoBehaviour
         playModeOpen = false;
         shopOpen = false;
         questsOpen = false;
+        promoOpen = false;
+        adminOpen = false;
         selectedLoadoutSlot = -1;
         Time.timeScale = 0f;
         movement.enabled = false;
@@ -83,7 +89,7 @@ public sealed class GameMenu : MonoBehaviour
 
         GUIStyle title = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 44, fontStyle = FontStyle.Bold };
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
 
         if (loadoutOpen)
             DrawLoadout();
@@ -93,6 +99,10 @@ public sealed class GameMenu : MonoBehaviour
             DrawShop();
         else if (questsOpen)
             DrawQuests();
+        else if (promoOpen)
+            DrawPromoCodes();
+        else if (adminOpen)
+            DrawAdminPanel();
         else
             DrawMainMenu();
     }
@@ -100,12 +110,15 @@ public sealed class GameMenu : MonoBehaviour
     private void DrawMainMenu()
     {
         float x = Screen.width * 0.5f - 120f;
-        float y = Screen.height * 0.5f - 90f;
+        float y = Screen.height * 0.5f - 160f;
         if (GUI.Button(new Rect(x, y, 240f, 48f), "PLAY MODE")) playModeOpen = true;
         if (GUI.Button(new Rect(x, y + 62f, 240f, 48f), "LOADOUT")) { loadoutOpen = true; selectedLoadoutSlot = -1; }
         if (GUI.Button(new Rect(x, y + 124f, 240f, 48f), "BLACK MARKET")) shopOpen = true;
         if (GUI.Button(new Rect(x, y + 186f, 240f, 48f), "QUEST BOARD")) questsOpen = true;
-        GUI.Label(new Rect(x - 80f, y + 246f, 400f, 30f), "Press Escape during play to return here", CenteredStyle(14));
+        if (GUI.Button(new Rect(x, y + 248f, 240f, 48f), "PROMO CODES")) promoOpen = true;
+        if (EconomyManager.Instance != null && EconomyManager.Instance.DevModeUnlocked
+            && GUI.Button(new Rect(x, y + 310f, 240f, 48f), "ADMIN PANEL")) adminOpen = true;
+        GUI.Label(new Rect(x - 80f, y + 372f, 400f, 30f), "Press Escape during play to return here", CenteredStyle(14));
     }
 
     private void DrawModeSelection()
@@ -163,6 +176,78 @@ public sealed class GameMenu : MonoBehaviour
         }
 
         if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) playModeOpen = false;
+    }
+
+    private void DrawPromoCodes()
+    {
+        EconomyManager economy = EconomyManager.Instance;
+        GUI.Label(new Rect(0f, 100f, Screen.width, 42f), "PROMO CODE TERMINAL", CenteredStyle(28));
+        Rect panel = new Rect(Screen.width * 0.5f - 300f, 175f, 600f, 270f);
+        GUI.color = new Color(0.025f, 0.055f, 0.07f, 0.97f);
+        GUI.DrawTexture(panel, Texture2D.whiteTexture);
+        GUI.color = new Color(0.15f, 0.85f, 0.7f);
+        GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 4f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle terminal = CenteredStyle(15);
+        terminal.normal.textColor = new Color(0.4f, 0.95f, 0.78f);
+        GUI.Label(new Rect(panel.x + 30f, panel.y + 35f, panel.width - 60f, 30f), "SECURE REDEMPTION CHANNEL // ONLINE", terminal);
+        GUIStyle field = new GUIStyle(GUI.skin.textField) { alignment = TextAnchor.MiddleCenter, fontSize = 21, fontStyle = FontStyle.Bold };
+        promoCode = GUI.TextField(new Rect(panel.x + 75f, panel.y + 88f, panel.width - 150f, 48f), promoCode, 32, field);
+        GUI.backgroundColor = new Color(0.12f, 0.7f, 0.52f);
+        if (GUI.Button(new Rect(panel.x + 180f, panel.y + 153f, 240f, 44f), "REDEEM CODE"))
+        {
+            promoStatus = economy == null ? "SYSTEM OFFLINE" : economy.RedeemPromoCode(promoCode);
+            promoCode = string.Empty;
+        }
+        GUI.backgroundColor = Color.white;
+        GUIStyle status = CenteredStyle(14);
+        status.normal.textColor = promoStatus.Contains("INVALID") ? new Color(1f, 0.35f, 0.25f) : new Color(1f, 0.78f, 0.2f);
+        GUI.Label(new Rect(panel.x + 25f, panel.y + 211f, panel.width - 50f, 36f), promoStatus, status);
+        if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) promoOpen = false;
+    }
+
+    private void DrawAdminPanel()
+    {
+        EconomyManager economy = EconomyManager.Instance;
+        if (economy == null || !economy.DevModeUnlocked) { adminOpen = false; return; }
+        GUI.Label(new Rect(0f, 82f, Screen.width, 42f), "DEVELOPER COMMAND CENTER", CenteredStyle(28));
+        GUIStyle warning = CenteredStyle(13);
+        warning.normal.textColor = new Color(1f, 0.62f, 0.15f);
+        GUI.Label(new Rect(0f, 120f, Screen.width, 28f), "AUTHORIZED PERSONNEL ONLY // CHANGES SAVE IMMEDIATELY", warning);
+
+        Rect panel = new Rect(Screen.width * 0.5f - 390f, 165f, 780f, 360f);
+        GUI.color = new Color(0.035f, 0.045f, 0.06f, 0.98f);
+        GUI.DrawTexture(panel, Texture2D.whiteTexture);
+        GUI.color = new Color(0.95f, 0.24f, 0.16f);
+        GUI.DrawTexture(new Rect(panel.x, panel.y, 6f, panel.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        PlayerVitals playerVitals = GetComponent<PlayerVitals>();
+        SimpleRifle rifle = GetComponent<SimpleRifle>();
+        GUI.Label(new Rect(panel.x + 35f, panel.y + 22f, 330f, 30f), "CURRENCY COMMANDS", CenteredStyle(17));
+        if (GUI.Button(new Rect(panel.x + 35f, panel.y + 65f, 100f, 42f), "+100")) economy.AdminGrantMoney(100);
+        if (GUI.Button(new Rect(panel.x + 145f, panel.y + 65f, 100f, 42f), "+1,000")) economy.AdminGrantMoney(1000);
+        if (GUI.Button(new Rect(panel.x + 255f, panel.y + 65f, 110f, 42f), "+10,000")) economy.AdminGrantMoney(10000);
+
+        GUI.Label(new Rect(panel.x + 410f, panel.y + 22f, 330f, 30f), "PLAYER OVERRIDES", CenteredStyle(17));
+        GUI.backgroundColor = playerVitals.InfiniteHealth ? new Color(0.12f, 0.8f, 0.4f) : new Color(0.25f, 0.28f, 0.32f);
+        if (GUI.Button(new Rect(panel.x + 420f, panel.y + 65f, 145f, 42f), playerVitals.InfiniteHealth ? "GOD MODE: ON" : "GOD MODE: OFF")) playerVitals.InfiniteHealth = !playerVitals.InfiniteHealth;
+        GUI.backgroundColor = rifle.InfiniteAmmo ? new Color(0.12f, 0.8f, 0.4f) : new Color(0.25f, 0.28f, 0.32f);
+        if (GUI.Button(new Rect(panel.x + 575f, panel.y + 65f, 145f, 42f), rifle.InfiniteAmmo ? "INF AMMO: ON" : "INF AMMO: OFF")) rifle.InfiniteAmmo = !rifle.InfiniteAmmo;
+        GUI.backgroundColor = Color.white;
+
+        GUI.Label(new Rect(panel.x + 35f, panel.y + 145f, panel.width - 70f, 30f), "WORLD & PROGRESSION", CenteredStyle(17));
+        if (GUI.Button(new Rect(panel.x + 55f, panel.y + 195f, 200f, 46f), "FULL HEAL + RESTOCK"))
+        {
+            playerVitals.RestoreForNewMode();
+            rifle.RestoreSpawnAmmo();
+        }
+        if (GUI.Button(new Rect(panel.x + 290f, panel.y + 195f, 200f, 46f), "UNLOCK ALL CONTENT")) economy.AdminUnlockAll();
+        if (GUI.Button(new Rect(panel.x + 525f, panel.y + 195f, 200f, 46f), "CLEAR ALL ENEMIES")) FindAnyObjectByType<WaveManager>()?.ClearEnemies();
+        GUIStyle active = CenteredStyle(13);
+        active.normal.textColor = new Color(0.45f, 0.9f, 1f);
+        GUI.Label(new Rect(panel.x + 30f, panel.y + 285f, panel.width - 60f, 35f), $"DEV MODE ACTIVE  •  CREDITS {economy.Money:N0}  •  HEALTH {(playerVitals.InfiniteHealth ? "∞" : Mathf.CeilToInt(playerVitals.Health).ToString())}  •  AMMO {(rifle.InfiniteAmmo ? "∞" : "NORMAL")}", active);
+        if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) adminOpen = false;
     }
 
     private void DrawShop()
