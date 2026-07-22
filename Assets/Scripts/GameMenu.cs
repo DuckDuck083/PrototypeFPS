@@ -17,6 +17,7 @@ public sealed class GameMenu : MonoBehaviour
     private int weaponShopSlot;
     private string promoCode = string.Empty;
     private string promoStatus = "Enter a code to redeem a special reward.";
+    private Vector2 pageScroll;
     private int selectedLoadoutSlot = -1;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -91,34 +92,64 @@ public sealed class GameMenu : MonoBehaviour
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
         GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
 
-        if (loadoutOpen)
-            DrawLoadout();
-        else if (playModeOpen)
-            DrawModeSelection();
-        else if (shopOpen)
-            DrawShop();
-        else if (questsOpen)
-            DrawQuests();
-        else if (promoOpen)
-            DrawPromoCodes();
-        else if (adminOpen)
-            DrawAdminPanel();
-        else
+        bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen;
+        if (!subPage)
+        {
             DrawMainMenu();
+            return;
+        }
+
+        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen ? 720f : loadoutOpen ? 640f : 610f;
+        Rect viewport = new Rect(0f, 0f, Screen.width, Screen.height);
+        Rect content = new Rect(0f, 0f, Mathf.Max(760f, Screen.width - 18f), Mathf.Max(contentHeight, Screen.height));
+        pageScroll = GUI.BeginScrollView(viewport, pageScroll, content, false, true);
+        if (loadoutOpen) DrawLoadout();
+        else if (playModeOpen) DrawModeSelection();
+        else if (shopOpen) DrawShop();
+        else if (questsOpen) DrawQuests();
+        else if (promoOpen) DrawPromoCodes();
+        else if (adminOpen) DrawAdminPanel();
+        GUI.EndScrollView();
+
+        if (pageScroll.y > 12f && GUI.Button(new Rect(Screen.width - 118f, 18f, 92f, 36f), "TOP"))
+            pageScroll.y = 0f;
     }
 
     private void DrawMainMenu()
     {
-        float x = Screen.width * 0.5f - 120f;
-        float y = Screen.height * 0.5f - 160f;
-        if (GUI.Button(new Rect(x, y, 240f, 48f), "PLAY MODE")) playModeOpen = true;
-        if (GUI.Button(new Rect(x, y + 62f, 240f, 48f), "LOADOUT")) { loadoutOpen = true; selectedLoadoutSlot = -1; }
-        if (GUI.Button(new Rect(x, y + 124f, 240f, 48f), "BLACK MARKET")) shopOpen = true;
-        if (GUI.Button(new Rect(x, y + 186f, 240f, 48f), "QUEST BOARD")) questsOpen = true;
-        if (GUI.Button(new Rect(x, y + 248f, 240f, 48f), "PROMO CODES")) promoOpen = true;
-        if (EconomyManager.Instance != null && EconomyManager.Instance.DevModeUnlocked
-            && GUI.Button(new Rect(x, y + 310f, 240f, 48f), "ADMIN PANEL")) adminOpen = true;
-        GUI.Label(new Rect(x - 80f, y + 372f, 400f, 30f), "Press Escape during play to return here", CenteredStyle(14));
+        float dashboardWidth = Mathf.Min(720f, Screen.width - 40f);
+        float tileGap = 14f;
+        float tileWidth = (dashboardWidth - tileGap) * 0.5f;
+        float tileHeight = Mathf.Clamp((Screen.height - 260f) / 3f, 76f, 112f);
+        float x = (Screen.width - dashboardWidth) * 0.5f;
+        float y = Mathf.Max(145f, Screen.height * 0.5f - tileHeight * 1.35f);
+
+        DrawHomeTile(new Rect(x, y, tileWidth, tileHeight), "PLAY", "Choose a game mode", new Color(0.15f, 0.65f, 0.95f), () => { pageScroll = Vector2.zero; playModeOpen = true; });
+        DrawHomeTile(new Rect(x + tileWidth + tileGap, y, tileWidth, tileHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
+        DrawHomeTile(new Rect(x, y + tileHeight + tileGap, tileWidth, tileHeight), "BLACK MARKET", "Modes, weapons and perks", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
+        DrawHomeTile(new Rect(x + tileWidth + tileGap, y + tileHeight + tileGap, tileWidth, tileHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
+        DrawHomeTile(new Rect(x, y + (tileHeight + tileGap) * 2f, tileWidth, tileHeight), "PROMO CODES", "Redeem special access", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
+        bool dev = EconomyManager.Instance != null && EconomyManager.Instance.DevModeUnlocked;
+        DrawHomeTile(new Rect(x + tileWidth + tileGap, y + (tileHeight + tileGap) * 2f, tileWidth, tileHeight), dev ? "ADMIN PANEL" : "OPERATIONS", dev ? "Developer commands" : "Dev access required", dev ? new Color(0.95f, 0.2f, 0.15f) : new Color(0.24f, 0.29f, 0.34f), () => { if (dev) { pageScroll = Vector2.zero; adminOpen = true; } });
+
+        GUI.Label(new Rect(0f, Mathf.Min(Screen.height - 38f, y + (tileHeight + tileGap) * 3f + 8f), Screen.width, 28f), "ESC pauses and returns to this dashboard", CenteredStyle(13));
+    }
+
+    private static void DrawHomeTile(Rect rect, string title, string subtitle, Color accent, System.Action action)
+    {
+        GUI.backgroundColor = new Color(0.08f, 0.12f, 0.16f);
+        if (GUI.Button(rect, "")) action();
+        GUI.backgroundColor = Color.white;
+        GUI.color = accent;
+        GUI.DrawTexture(new Rect(rect.x, rect.y, 5f, rect.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle heading = CenteredStyle(19);
+        heading.fontStyle = FontStyle.Bold;
+        heading.normal.textColor = accent;
+        GUI.Label(new Rect(rect.x + 16f, rect.y + 15f, rect.width - 32f, 28f), title, heading);
+        GUIStyle detail = CenteredStyle(13);
+        detail.normal.textColor = new Color(0.72f, 0.8f, 0.85f);
+        GUI.Label(new Rect(rect.x + 16f, rect.y + 47f, rect.width - 32f, 25f), subtitle, detail);
     }
 
     private void DrawModeSelection()
@@ -280,11 +311,15 @@ public sealed class GameMenu : MonoBehaviour
     {
         string[] names = { "CLASSIC", "FORTRESS", "STRONG", "CONVOY", "CAMPAIGN" };
         string[] subtitles = { "Wave survival", "Base warfare", "One-person army", "Escort operation", "Six-mission story" };
-        float width = Mathf.Min(220f, (Screen.width - 80f) / 5f);
-        float start = (Screen.width - width * 5f) * 0.5f;
+        int columns = Screen.width < 950 ? 3 : 5;
+        float width = Mathf.Min(220f, (Screen.width - 50f) / columns);
         for (int i = 0; i < names.Length; i++)
         {
-            Rect card = new Rect(start + i * width, 195f, width - 12f, 190f);
+            int rowColumns = i < columns ? columns : names.Length - columns;
+            int row = i / columns;
+            int column = i % columns;
+            float start = (Screen.width - width * rowColumns) * 0.5f;
+            Rect card = new Rect(start + column * width, 195f + row * 205f, width - 12f, 190f);
             bool owned = economy.IsModeUnlocked(i);
             DrawStoreCard(card, names[i], subtitles[i], owned, EconomyManager.ModePrices[i]);
             if (!owned && GUI.Button(new Rect(card.x + 18f, card.y + 136f, card.width - 36f, 38f), $"BUY  ◆ {EconomyManager.ModePrices[i]}")) economy.BuyMode(i);
@@ -295,12 +330,13 @@ public sealed class GameMenu : MonoBehaviour
     {
         string[] names = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE" };
         string[] roles = { "Balanced fighter", "Heavy frontline", "Build and defend", "Long-range expert", "Explosives master", "Fast tactical agent", "Black-powder bruiser" };
-        float width = 210f;
+        float width = Mathf.Min(210f, (Screen.width - 36f) / 3f);
+        int maxColumns = Screen.width < 760 ? 3 : 4;
         for (int i = 0; i < names.Length; i++)
         {
-            int columns = i < 4 ? 4 : 3;
-            int column = i < 4 ? i : i - 4;
-            int row = i < 4 ? 0 : 1;
+            int row = i / maxColumns;
+            int column = i % maxColumns;
+            int columns = Mathf.Min(maxColumns, names.Length - row * maxColumns);
             float start = (Screen.width - columns * width) * 0.5f;
             Rect card = new Rect(start + column * width, 185f + row * 185f, width - 12f, 165f);
             bool owned = economy.IsClassUnlocked(i);
@@ -322,12 +358,12 @@ public sealed class GameMenu : MonoBehaviour
         int count = weapons.GetLoadoutOptionCount(weaponShopSlot);
         float width = 210f;
         float height = 98f;
-        int columns = Mathf.Min(5, count);
+        int columns = Mathf.Min(Mathf.Max(3, Mathf.FloorToInt((Screen.width - 30f) / width)), count);
         float gridStart = (Screen.width - columns * width) * 0.5f;
         for (int i = 0; i < count; i++)
         {
-            int row = i / 5;
-            int column = i % 5;
+            int row = i / columns;
+            int column = i % columns;
             string name = weapons.GetLoadoutOptionName(weaponShopSlot, i);
             Rect card = new Rect(gridStart + column * width, 230f + row * (height + 10f), width - 10f, height);
             bool owned = economy.IsWeaponUnlocked(weaponShopSlot, i);
@@ -342,11 +378,14 @@ public sealed class GameMenu : MonoBehaviour
 
     private static void DrawPerkShop(EconomyManager economy)
     {
-        float width = 245f;
-        float start = (Screen.width - width * EconomyManager.PerkNames.Length) * 0.5f;
+        int columns = Screen.width < 900 ? 2 : 4;
+        float width = Mathf.Min(245f, (Screen.width - 40f) / columns);
         for (int i = 0; i < EconomyManager.PerkNames.Length; i++)
         {
-            Rect card = new Rect(start + i * width, 200f, width - 14f, 190f);
+            int row = i / columns;
+            int column = i % columns;
+            float start = (Screen.width - width * Mathf.Min(columns, EconomyManager.PerkNames.Length - row * columns)) * 0.5f;
+            Rect card = new Rect(start + column * width, 200f + row * 205f, width - 14f, 190f);
             bool owned = economy.IsPerkUnlocked(i);
             DrawStoreCard(card, EconomyManager.PerkNames[i], EconomyManager.PerkDescriptions[i], owned, EconomyManager.PerkPrices[i]);
             if (!owned && GUI.Button(new Rect(card.x + 16f, card.y + 136f, card.width - 32f, 38f), $"BUY  ◆ {EconomyManager.PerkPrices[i]}")) economy.BuyPerk(i);
