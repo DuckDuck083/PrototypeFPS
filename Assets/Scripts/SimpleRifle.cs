@@ -91,7 +91,15 @@ public sealed class SimpleRifle : MonoBehaviour
     private const float MinimumFalloffMultiplier = 0.35f;
     public float ModeDamageMultiplier { get; set; } = 1f;
     public float PerkDamageMultiplier { get; set; } = 1f;
+    public float PerkAmmoPickupMultiplier { get; set; } = 1f;
+    public bool HardcoreAmmoRules { get; set; }
     public bool InfiniteAmmo { get; set; }
+
+    public void SetBaseFieldOfView(float value)
+    {
+        normalFieldOfView = Mathf.Clamp(value, 60f, 110f);
+        if (!IsAiming && playerCamera != null) playerCamera.fieldOfView = normalFieldOfView;
+    }
 
     private bool IsAiming => currentWeapon != WeaponType.Melee && !isReloading && (IsSniperRifleEquipped ? sniperScopeToggled : aimAction.IsPressed());
     private bool IsSniperRifleEquipped => (currentSlot == 3 && slotSelections[3] == 0) || (currentSlot == 0 && slotSelections[0] == 6);
@@ -1076,6 +1084,7 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public void ReportExplosiveHit(float totalDamage)
     {
+        FindAnyObjectByType<GameModeManager>()?.RecordDamage(totalDamage);
         lastDamageAmount = totalDamage;
         lastHitWasCritical = false;
         hitMarkerUntil = Time.time + 0.45f;
@@ -1122,6 +1131,7 @@ public sealed class SimpleRifle : MonoBehaviour
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         Vector3 tracerEnd = ray.GetPoint(range);
+        bool hitEnemy = false;
         if (sniperShot)
         {
             RaycastHit[] penetratingHits = Physics.RaycastAll(ray, range, ~0, QueryTriggerInteraction.Ignore);
@@ -1139,6 +1149,7 @@ public sealed class SimpleRifle : MonoBehaviour
                     previousArcPoint = penetratingHit.point;
                     tracerEnd = penetratingHit.point;
                     targetsHit++;
+                    hitEnemy = true;
                 }
                 CreateBulletHole(penetratingHit.point, penetratingHit.normal, penetratingHit.transform);
             }
@@ -1150,10 +1161,12 @@ public sealed class SimpleRifle : MonoBehaviour
                 hit.rigidbody.AddForceAtPosition(ray.direction * hitForce, hit.point, ForceMode.Impulse);
 
             ApplyDamage(hit, damage, sniperShot, 0f, sniperShot);
+            hitEnemy = hit.collider.GetComponentInParent<TrainingTarget>() != null;
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
 
         CreateTracer(tracerEnd);
+        FindAnyObjectByType<GameModeManager>()?.RecordShot(hitEnemy);
         CreateMuzzleFlash();
         if (CurrentAmmo == 0)
             TryReload();
@@ -1190,7 +1203,9 @@ public sealed class SimpleRifle : MonoBehaviour
         bool critical = (allowHeadshotCritical && hit.collider.gameObject.name == "Head") || Random.value < randomCritChance;
         float falloff = critical || ignoresFalloff ? 1f : GetDamageFalloff(hit.distance);
         float finalDamage = (critical ? baseDamage * 3f : baseDamage) * falloff;
-        damageable.TakeDamage(finalDamage * ModeDamageMultiplier * PerkDamageMultiplier);
+        float dealt = finalDamage * ModeDamageMultiplier * PerkDamageMultiplier;
+        damageable.TakeDamage(dealt);
+        FindAnyObjectByType<GameModeManager>()?.RecordDamage(dealt);
 
         lastDamageAmount = finalDamage;
         lastHitWasCritical = critical;
@@ -1239,6 +1254,13 @@ public sealed class SimpleRifle : MonoBehaviour
             sniperAmmo = Mathf.Min(specialistCaps[slotSelections[3]], sniperAmmo + specialistAdds[slotSelections[3]]);
         }
 
+        float pickupMultiplier = PerkAmmoPickupMultiplier * (HardcoreAmmoRules ? 0.4f : 1f);
+        rifleReserveAmmo = oldPrimary + Mathf.RoundToInt((rifleReserveAmmo - oldPrimary) * pickupMultiplier);
+        handgunReserveAmmo = oldSecondary + Mathf.RoundToInt((handgunReserveAmmo - oldSecondary) * pickupMultiplier);
+        int newSpecial = sniperAmmo + sniperReserveAmmo;
+        int adjustedSpecial = oldSpecial + Mathf.RoundToInt((newSpecial - oldSpecial) * pickupMultiplier);
+        if (sniperReserveAmmo > 0) sniperReserveAmmo = Mathf.Max(0, adjustedSpecial - sniperAmmo);
+        else sniperAmmo = adjustedSpecial;
         return rifleReserveAmmo > oldPrimary || handgunReserveAmmo > oldSecondary || sniperAmmo + sniperReserveAmmo > oldSpecial;
     }
 
@@ -1253,8 +1275,25 @@ public sealed class SimpleRifle : MonoBehaviour
         handgunReserveAmmo = secondaryReserves[slotSelections[1]];
         sniperAmmo = specialistAmmo[slotSelections[3]];
         sniperReserveAmmo = slotSelections[3] == 0 ? 24 : 0;
+        if (HardcoreAmmoRules)
+        {
+            rifleAmmo = Mathf.Max(1, Mathf.CeilToInt(rifleAmmo * 0.65f));
+            rifleReserveAmmo = Mathf.CeilToInt(rifleReserveAmmo * 0.5f);
+            handgunAmmo = Mathf.CeilToInt(handgunAmmo * 0.65f);
+            handgunReserveAmmo = Mathf.CeilToInt(handgunReserveAmmo * 0.5f);
+            sniperAmmo = Mathf.Max(1, Mathf.CeilToInt(sniperAmmo * 0.65f));
+            sniperReserveAmmo = Mathf.CeilToInt(sniperReserveAmmo * 0.5f);
+        }
         isReloading = false;
         reloadProgress = 0f;
+    }
+
+    public void AddStartingAmmoFraction(float fraction)
+    {
+        rifleReserveAmmo += Mathf.CeilToInt(rifleReserveAmmo * Mathf.Max(0f, fraction));
+        handgunReserveAmmo += Mathf.CeilToInt(handgunReserveAmmo * Mathf.Max(0f, fraction));
+        sniperReserveAmmo += Mathf.CeilToInt(sniperReserveAmmo * Mathf.Max(0f, fraction));
+        sniperAmmo += Mathf.CeilToInt(sniperAmmo * Mathf.Max(0f, fraction));
     }
 
     private void TryReload()

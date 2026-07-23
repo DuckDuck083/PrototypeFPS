@@ -38,7 +38,8 @@ public sealed class ArenaPickup : MonoBehaviour
         bool collected;
         if (pickupType == PickupType.Health)
         {
-            collected = vitals.Heal(30f);
+            bool hardcore = FindAnyObjectByType<GameModeManager>()?.IsHardcore == true;
+            collected = vitals.Heal(hardcore ? 10f : 30f);
         }
         else
         {

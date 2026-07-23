@@ -13,6 +13,10 @@ public sealed class GameMenu : MonoBehaviour
     private bool questsOpen;
     private bool promoOpen;
     private bool adminOpen;
+    private bool settingsOpen;
+    private bool pausedMatch;
+    private bool reportOpen;
+    private bool confirmProgressReset;
     private int shopCategory;
     private int weaponShopSlot;
     private string promoCode = string.Empty;
@@ -38,8 +42,28 @@ public sealed class GameMenu : MonoBehaviour
 
     private void Update()
     {
-        if (!menuOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        if (Keyboard.current == null) return;
+        GameModeManager manager = FindAnyObjectByType<GameModeManager>();
+        if (!menuOpen && manager != null && !string.IsNullOrEmpty(manager.LastReport))
+        {
             OpenMenu();
+            reportOpen = true;
+            return;
+        }
+        if (!menuOpen && Keyboard.current.pKey.wasPressedThisFrame)
+        {
+            pausedMatch = true;
+            OpenMenu();
+        }
+        else if (menuOpen && pausedMatch && Keyboard.current.pKey.wasPressedThisFrame)
+            ResumeMatch();
+        else if (Keyboard.current.escapeKey.wasPressedThisFrame && manager != null && manager.MatchRunning)
+        {
+            manager.ExitMatchEarly();
+            pausedMatch = false;
+            OpenMenu();
+            reportOpen = true;
+        }
     }
 
     private void OpenMenu()
@@ -51,6 +75,9 @@ public sealed class GameMenu : MonoBehaviour
         questsOpen = false;
         promoOpen = false;
         adminOpen = false;
+        settingsOpen = false;
+        reportOpen = false;
+        confirmProgressReset = false;
         selectedLoadoutSlot = -1;
         Time.timeScale = 0f;
         movement.enabled = false;
@@ -65,6 +92,7 @@ public sealed class GameMenu : MonoBehaviour
         GameModeManager manager = FindAnyObjectByType<GameModeManager>();
         if (manager == null) return;
         manager.StartMode(mode);
+        pausedMatch = false;
         menuOpen = false;
         Time.timeScale = 1f;
         vitals.enabled = true;
@@ -72,6 +100,17 @@ public sealed class GameMenu : MonoBehaviour
         weapons.enabled = true;
         movement.RestoreControls();
         weapons.EquipLoadoutSlot(0);
+    }
+
+    private void ResumeMatch()
+    {
+        menuOpen = false;
+        pausedMatch = false;
+        Time.timeScale = 1f;
+        vitals.enabled = true;
+        movement.enabled = true;
+        weapons.enabled = true;
+        movement.RestoreControls();
     }
 
     private void OnDestroy()
@@ -90,16 +129,16 @@ public sealed class GameMenu : MonoBehaviour
 
         GUIStyle title = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 44, fontStyle = FontStyle.Bold };
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || reportOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
 
-        bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen;
+        bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || reportOpen;
         if (!subPage)
         {
             DrawMainMenu();
             return;
         }
 
-        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen ? 720f : loadoutOpen ? 640f : 610f;
+        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : loadoutOpen ? 640f : 610f;
         Rect viewport = new Rect(0f, 0f, Screen.width, Screen.height);
         Rect content = new Rect(0f, 0f, Mathf.Max(760f, Screen.width - 18f), Mathf.Max(contentHeight, Screen.height));
         pageScroll = GUI.BeginScrollView(viewport, pageScroll, content, false, true);
@@ -109,6 +148,8 @@ public sealed class GameMenu : MonoBehaviour
         else if (questsOpen) DrawQuests();
         else if (promoOpen) DrawPromoCodes();
         else if (adminOpen) DrawAdminPanel();
+        else if (settingsOpen) DrawSettings();
+        else if (reportOpen) DrawMatchReport();
         GUI.EndScrollView();
 
         if (pageScroll.y > 12f && GUI.Button(new Rect(Screen.width - 118f, 18f, 92f, 36f), "TOP"))
@@ -124,15 +165,22 @@ public sealed class GameMenu : MonoBehaviour
         float x = (Screen.width - dashboardWidth) * 0.5f;
         float y = Mathf.Max(145f, Screen.height * 0.5f - tileHeight * 1.35f);
 
-        DrawHomeTile(new Rect(x, y, tileWidth, tileHeight), "PLAY", "Choose a game mode", new Color(0.15f, 0.65f, 0.95f), () => { pageScroll = Vector2.zero; playModeOpen = true; });
+        DrawHomeTile(new Rect(x, y, tileWidth, tileHeight), pausedMatch ? "RESUME" : "PLAY", pausedMatch ? "Return to the current match" : "Choose a game mode", new Color(0.15f, 0.65f, 0.95f), () => { if (pausedMatch) ResumeMatch(); else { pageScroll = Vector2.zero; playModeOpen = true; } });
         DrawHomeTile(new Rect(x + tileWidth + tileGap, y, tileWidth, tileHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
         DrawHomeTile(new Rect(x, y + tileHeight + tileGap, tileWidth, tileHeight), "BLACK MARKET", "Modes, weapons and perks", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
         DrawHomeTile(new Rect(x + tileWidth + tileGap, y + tileHeight + tileGap, tileWidth, tileHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
         DrawHomeTile(new Rect(x, y + (tileHeight + tileGap) * 2f, tileWidth, tileHeight), "PROMO CODES", "Redeem special access", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
         bool dev = EconomyManager.Instance != null && EconomyManager.Instance.DevModeUnlocked;
-        DrawHomeTile(new Rect(x + tileWidth + tileGap, y + (tileHeight + tileGap) * 2f, tileWidth, tileHeight), dev ? "ADMIN PANEL" : "OPERATIONS", dev ? "Developer commands" : "Dev access required", dev ? new Color(0.95f, 0.2f, 0.15f) : new Color(0.24f, 0.29f, 0.34f), () => { if (dev) { pageScroll = Vector2.zero; adminOpen = true; } });
+        DrawHomeTile(new Rect(x + tileWidth + tileGap, y + (tileHeight + tileGap) * 2f, tileWidth, tileHeight), "SETTINGS", "Audio, controls and display", new Color(0.48f, 0.68f, 0.9f), () => { pageScroll = Vector2.zero; settingsOpen = true; });
 
-        GUI.Label(new Rect(0f, Mathf.Min(Screen.height - 38f, y + (tileHeight + tileGap) * 3f + 8f), Screen.width, 28f), "ESC pauses and returns to this dashboard", CenteredStyle(13));
+        if (dev)
+        {
+            GUI.backgroundColor = new Color(0.72f, 0.12f, 0.08f);
+            if (GUI.Button(new Rect(Screen.width - 178f, 88f, 150f, 38f), "ADMIN PANEL")) { pageScroll = Vector2.zero; adminOpen = true; }
+            GUI.backgroundColor = Color.white;
+        }
+
+        GUI.Label(new Rect(0f, Mathf.Min(Screen.height - 38f, y + (tileHeight + tileGap) * 3f + 8f), Screen.width, 28f), pausedMatch ? "P resumes  •  ESC exits the match for 0.5x credits" : "P pauses during a match  •  ESC exits the match", CenteredStyle(13));
     }
 
     private static void DrawHomeTile(Rect rect, string title, string subtitle, Color accent, System.Action action)
@@ -154,19 +202,20 @@ public sealed class GameMenu : MonoBehaviour
 
     private void DrawModeSelection()
     {
-        string[] names = { "CLASSIC", "FORTRESS", "STRONG", "CONVOY", "CAMPAIGN" };
+        string[] names = { "CLASSIC", "FORTRESS", "STRONG", "CONVOY", "CAMPAIGN", "HARDCORE" };
         string[] descriptions =
         {
             "Standard wave survival.\nEnemies grow stronger every wave.",
             "1 vs 10. Attack the enemy fortress,\ndefend yours, and stop reinforcements.",
             "1 vs 20–30 with boosted health, damage,\nand regeneration. Best of three rounds.",
             "Escort a top-secret briefcase with four\nAI bodyguards and reach extraction.",
-            "A six-mission story across outposts, forests,\nprisons, cities, laboratories, and the capital."
+            "A six-mission story across outposts, forests,\nprisons, cities, laboratories, and the capital.",
+            "One life, scarce supplies, endless enemies.\nYour survival time is the score."
         };
         Color[] accents =
         {
             new Color(0.18f, 0.65f, 0.95f), new Color(0.95f, 0.42f, 0.16f), new Color(0.68f, 0.28f, 0.95f),
-            new Color(0.16f, 0.78f, 0.52f), new Color(0.95f, 0.72f, 0.18f)
+            new Color(0.16f, 0.78f, 0.52f), new Color(0.95f, 0.72f, 0.18f), new Color(0.95f, 0.18f, 0.12f)
         };
 
         GUI.Label(new Rect(0f, 86f, Screen.width, 42f), "SELECT GAME MODE", CenteredStyle(26));
@@ -175,9 +224,9 @@ public sealed class GameMenu : MonoBehaviour
         float gap = 18f;
         for (int i = 0; i < names.Length; i++)
         {
-            int columns = i < 3 ? 3 : 2;
-            int column = i < 3 ? i : i - 3;
-            int row = i < 3 ? 0 : 1;
+            int columns = 3;
+            int column = i % columns;
+            int row = i / columns;
             float rowWidth = columns * cardWidth + (columns - 1) * gap;
             Rect card = new Rect((Screen.width - rowWidth) * 0.5f + column * (cardWidth + gap), 150f + row * (cardHeight + gap), cardWidth, cardHeight);
             bool unlocked = EconomyManager.Instance == null || EconomyManager.Instance.IsModeUnlocked(i);
@@ -207,6 +256,95 @@ public sealed class GameMenu : MonoBehaviour
         }
 
         if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) playModeOpen = false;
+    }
+
+    private void DrawSettings()
+    {
+        GameSettingsManager settings = FindAnyObjectByType<GameSettingsManager>();
+        if (settings == null) return;
+        GUI.Label(new Rect(0f, 82f, Screen.width, 42f), "SETTINGS", CenteredStyle(28));
+        Rect panel = new Rect(Screen.width * 0.5f - 350f, 145f, 700f, 405f);
+        GUI.color = new Color(0.045f, 0.065f, 0.085f, 0.97f);
+        GUI.DrawTexture(panel, Texture2D.whiteTexture);
+        GUI.color = new Color(0.3f, 0.72f, 1f);
+        GUI.DrawTexture(new Rect(panel.x, panel.y, 5f, panel.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        float labelX = panel.x + 35f;
+        float sliderX = panel.x + 275f;
+        float sliderWidth = 330f;
+        DrawSettingLabel(new Rect(labelX, panel.y + 28f, 220f, 28f), "MASTER VOLUME", $"{Mathf.RoundToInt(settings.MasterVolume * 100f)}%");
+        float volume = GUI.HorizontalSlider(new Rect(sliderX, panel.y + 40f, sliderWidth, 20f), settings.MasterVolume, 0f, 1f);
+        if (!Mathf.Approximately(volume, settings.MasterVolume)) settings.SetVolume(volume);
+
+        DrawSettingLabel(new Rect(labelX, panel.y + 88f, 220f, 28f), "MOUSE SENSITIVITY", settings.MouseSensitivity.ToString("0.00"));
+        float sensitivity = GUI.HorizontalSlider(new Rect(sliderX, panel.y + 100f, sliderWidth, 20f), settings.MouseSensitivity, 0.03f, 0.4f);
+        if (!Mathf.Approximately(sensitivity, settings.MouseSensitivity)) settings.SetSensitivity(sensitivity);
+
+        DrawSettingLabel(new Rect(labelX, panel.y + 148f, 220f, 28f), "FIELD OF VIEW", Mathf.RoundToInt(settings.FieldOfView).ToString());
+        float fieldOfView = GUI.HorizontalSlider(new Rect(sliderX, panel.y + 160f, sliderWidth, 20f), settings.FieldOfView, 60f, 110f);
+        if (!Mathf.Approximately(fieldOfView, settings.FieldOfView)) settings.SetFieldOfView(fieldOfView);
+
+        GUI.Label(new Rect(labelX, panel.y + 205f, 220f, 30f), "GRAPHICS QUALITY", SettingsLabelStyle());
+        string[] qualityNames = QualitySettings.names;
+        float qualityButtonWidth = sliderWidth / Mathf.Max(1, qualityNames.Length);
+        for (int i = 0; i < qualityNames.Length; i++)
+        {
+            GUI.backgroundColor = settings.QualityLevel == i ? new Color(0.18f, 0.68f, 0.95f) : new Color(0.16f, 0.2f, 0.24f);
+            if (GUI.Button(new Rect(sliderX + i * qualityButtonWidth, panel.y + 200f, qualityButtonWidth - 4f, 36f), qualityNames[i])) settings.SetQuality(i);
+        }
+        GUI.backgroundColor = settings.Fullscreen ? new Color(0.15f, 0.75f, 0.42f) : new Color(0.22f, 0.25f, 0.28f);
+        if (GUI.Button(new Rect(labelX, panel.y + 265f, 210f, 42f), settings.Fullscreen ? "FULLSCREEN: ON" : "FULLSCREEN: OFF")) settings.SetFullscreen(!settings.Fullscreen);
+        GUI.backgroundColor = new Color(0.18f, 0.55f, 0.85f);
+        if (GUI.Button(new Rect(sliderX + 80f, panel.y + 265f, 170f, 42f), "SAVE SETTINGS")) settings.Save();
+        GUI.backgroundColor = Color.white;
+
+        GUI.color = new Color(0.16f, 0.02f, 0.02f, 0.95f);
+        GUI.DrawTexture(new Rect(labelX, panel.y + 330f, panel.width - 70f, 52f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        if (!confirmProgressReset)
+        {
+            if (GUI.Button(new Rect(panel.x + 230f, panel.y + 337f, 240f, 38f), "RESET ALL PROGRESS")) confirmProgressReset = true;
+        }
+        else
+        {
+            GUIStyle confirm = CenteredStyle(12);
+            confirm.normal.textColor = new Color(1f, 0.72f, 0.2f);
+            GUI.Label(new Rect(labelX + 8f, panel.y + 337f, 250f, 36f), "This cannot be undone.", confirm);
+            GUI.backgroundColor = new Color(0.82f, 0.12f, 0.08f);
+            if (GUI.Button(new Rect(panel.x + 300f, panel.y + 337f, 155f, 38f), "CONFIRM RESET")) ResetProgress();
+            GUI.backgroundColor = Color.white;
+            if (GUI.Button(new Rect(panel.x + 465f, panel.y + 337f, 100f, 38f), "CANCEL")) confirmProgressReset = false;
+        }
+        if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) { settingsOpen = false; confirmProgressReset = false; }
+    }
+
+    private static void DrawSettingLabel(Rect rect, string label, string value)
+    {
+        GUI.Label(rect, $"{label}   <color=#55C8FF>{value}</color>", SettingsLabelStyle());
+    }
+
+    private static GUIStyle SettingsLabelStyle()
+    {
+        GUIStyle style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft, fontSize = 14, fontStyle = FontStyle.Bold, richText = true };
+        style.normal.textColor = Color.white;
+        return style;
+    }
+
+    private void ResetProgress()
+    {
+        FindAnyObjectByType<GameModeManager>()?.AbandonActiveMode();
+        EconomyManager.Instance?.ResetAllProgress();
+        vitals.InfiniteHealth = false;
+        weapons.InfiniteAmmo = false;
+        weapons.SetPlayerClass(SimpleRifle.PlayerClass.Soldier);
+        weapons.SetLoadoutSlot(0, 0);
+        weapons.SetLoadoutSlot(1, 1);
+        weapons.SetLoadoutSlot(2, 0);
+        weapons.SetLoadoutSlot(3, 1);
+        vitals.RestoreForNewMode();
+        weapons.RestoreSpawnAmmo();
+        confirmProgressReset = false;
     }
 
     private void DrawPromoCodes()
@@ -290,8 +428,8 @@ public sealed class GameMenu : MonoBehaviour
         balance.normal.textColor = new Color(1f, 0.78f, 0.18f);
         GUI.Label(new Rect(Screen.width - 270f, 28f, 240f, 38f), $"◆ {economy.Money:N0} CREDITS", balance);
 
-        string[] categories = { "MODES", "CLASSES", "WEAPONS", "PERKS" };
-        float tabWidth = 155f;
+        string[] categories = { "MODES", "CLASSES", "WEAPONS", "PERKS", "STARTING LOOT" };
+        float tabWidth = 145f;
         float tabStart = (Screen.width - tabWidth * categories.Length) * 0.5f;
         for (int i = 0; i < categories.Length; i++)
         {
@@ -303,14 +441,15 @@ public sealed class GameMenu : MonoBehaviour
         if (shopCategory == 0) DrawModeShop(economy);
         else if (shopCategory == 1) DrawClassShop(economy);
         else if (shopCategory == 2) DrawWeaponShop(economy);
-        else DrawPerkShop(economy);
+        else if (shopCategory == 3) DrawPerkShop(economy);
+        else DrawLootShop(economy);
         if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) shopOpen = false;
     }
 
     private static void DrawModeShop(EconomyManager economy)
     {
-        string[] names = { "CLASSIC", "FORTRESS", "STRONG", "CONVOY", "CAMPAIGN" };
-        string[] subtitles = { "Wave survival", "Base warfare", "One-person army", "Escort operation", "Six-mission story" };
+        string[] names = { "CLASSIC", "FORTRESS", "STRONG", "CONVOY", "CAMPAIGN", "HARDCORE" };
+        string[] subtitles = { "Wave survival", "Base warfare", "One-person army", "Escort operation", "Six-mission story", "One-life survival" };
         int columns = Screen.width < 950 ? 3 : 5;
         float width = Mathf.Min(220f, (Screen.width - 50f) / columns);
         for (int i = 0; i < names.Length; i++)
@@ -390,6 +529,42 @@ public sealed class GameMenu : MonoBehaviour
             DrawStoreCard(card, EconomyManager.PerkNames[i], EconomyManager.PerkDescriptions[i], owned, EconomyManager.PerkPrices[i]);
             if (!owned && GUI.Button(new Rect(card.x + 16f, card.y + 136f, card.width - 32f, 38f), $"BUY  ◆ {EconomyManager.PerkPrices[i]}")) economy.BuyPerk(i);
         }
+    }
+
+    private static void DrawLootShop(EconomyManager economy)
+    {
+        GUIStyle info = CenteredStyle(14);
+        info.normal.textColor = new Color(1f, 0.45f, 0.22f);
+        GUI.Label(new Rect(0f, 172f, Screen.width, 28f), "HARDCORE STARTING LOADOUT — OWNED ITEMS APPLY TO EVERY RUN", info);
+        int columns = Screen.width < 900 ? 2 : 4;
+        float width = Mathf.Min(245f, (Screen.width - 40f) / columns);
+        for (int i = 0; i < EconomyManager.LootNames.Length; i++)
+        {
+            int row = i / columns;
+            int column = i % columns;
+            float start = (Screen.width - width * Mathf.Min(columns, EconomyManager.LootNames.Length - row * columns)) * 0.5f;
+            Rect card = new Rect(start + column * width, 215f + row * 205f, width - 14f, 190f);
+            bool owned = economy.IsLootUnlocked(i);
+            DrawStoreCard(card, EconomyManager.LootNames[i], EconomyManager.LootDescriptions[i], owned, EconomyManager.LootPrices[i]);
+            if (!owned && GUI.Button(new Rect(card.x + 16f, card.y + 136f, card.width - 32f, 38f), $"BUY  ◆ {EconomyManager.LootPrices[i]}")) economy.BuyLoot(i);
+        }
+    }
+
+    private void DrawMatchReport()
+    {
+        GameModeManager manager = FindAnyObjectByType<GameModeManager>();
+        GUI.Label(new Rect(0f, 82f, Screen.width, 42f), "AFTER ACTION REPORT", CenteredStyle(28));
+        Rect panel = new Rect(Screen.width * 0.5f - 290f, 145f, 580f, 390f);
+        GUI.color = new Color(0.035f, 0.055f, 0.075f, 0.98f);
+        GUI.DrawTexture(panel, Texture2D.whiteTexture);
+        GUI.color = new Color(0.25f, 0.75f, 1f);
+        GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 5f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle report = CenteredStyle(18);
+        report.fontStyle = FontStyle.Bold;
+        report.normal.textColor = new Color(0.82f, 0.9f, 0.96f);
+        GUI.Label(new Rect(panel.x + 35f, panel.y + 28f, panel.width - 70f, 285f), manager == null ? "NO REPORT AVAILABLE" : manager.LastReport, report);
+        if (GUI.Button(new Rect(panel.x + 170f, panel.y + 325f, 240f, 44f), "RETURN TO COMMAND")) reportOpen = false;
     }
 
     private static void DrawStoreCard(Rect card, string title, string description, bool owned, int price)

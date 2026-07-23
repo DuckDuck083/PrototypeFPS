@@ -9,14 +9,20 @@ public sealed class EconomyManager : MonoBehaviour
     public string LastNotification { get; private set; }
     private float notificationUntil;
 
-    public static readonly string[] PerkNames = { "SPRINTER", "ARMOR PLATING", "HIGH CALIBER", "FIELD MEDIC" };
+    public static readonly string[] PerkNames = { "SPRINTER", "ARMOR PLATING", "HIGH CALIBER", "FIELD MEDIC", "MARATHON", "SCAVENGER", "BOUNTY CHIP", "SECOND WIND" };
     public static readonly string[] PerkDescriptions =
     {
-        "+15% movement speed", "15% less incoming damage", "+12% weapon damage", "Regenerate 1 health per second"
+        "+15% movement speed", "15% less incoming damage", "+12% weapon damage", "Regenerate 1 health per second",
+        "Stamina drains 25% slower", "+25% ammo from pickups", "+20% enemy bounty credits", "+20 maximum health"
     };
-    public static readonly int[] PerkPrices = { 650, 800, 900, 750 };
-    public static readonly int[] ModePrices = { 0, 0, 900, 1100, 1600 };
+    public static readonly int[] PerkPrices = { 650, 800, 900, 750, 700, 725, 1000, 850 };
+    public static readonly int[] ModePrices = { 0, 0, 900, 1100, 1600, 1300 };
     public static readonly int[] ClassPrices = { 0, 700, 750, 800, 850, 1100, 1200 };
+    public static readonly string[] LootNames = { "FIELD MEDKIT", "AMMO SATCHEL", "TRAUMA PLATE", "ADRENALINE" };
+    public static readonly string[] LootDescriptions = { "Start Hardcore with +25 health", "Start with 35% more reserve ammo", "Start with +20 max health", "Start with full stamina and brief regeneration" };
+    public static readonly int[] LootPrices = { 300, 450, 600, 500 };
+    private bool matchActive;
+    private int pendingCredits;
 
     private readonly string[] questNames = { "ELITE HUNTER", "MATCH WINNER", "TANK BUSTER", "WAR HERO" };
     private readonly string[] questDescriptions = { "Defeat 20 armed or elite enemies", "Win 3 matches", "Destroy 5 tank enemies", "Complete 6 campaign missions" };
@@ -36,6 +42,7 @@ public sealed class EconomyManager : MonoBehaviour
     public bool IsClassUnlocked(int playerClass) => playerClass == 0 || PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Class.{playerClass}", 0) == 1;
     public bool IsWeaponUnlocked(int slot, int weapon) => IsStockWeapon(slot, weapon) || PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}", 0) == 1;
     public bool IsPerkUnlocked(int perk) => PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Perk.{perk}", 0) == 1;
+    public bool IsLootUnlocked(int loot) => PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Loot.{loot}", 0) == 1;
     public int WeaponPrice(int slot, int weapon) => 250 + slot * 60 + weapon * 55;
 
     private static bool IsStockWeapon(int slot, int weapon)
@@ -45,6 +52,16 @@ public sealed class EconomyManager : MonoBehaviour
     public bool BuyClass(int playerClass) => Buy($"PrototypeFPS.Unlock.Class.{playerClass}", ClassPrices[playerClass], $"CLASS UNLOCKED: {(SimpleRifle.PlayerClass)playerClass}", () => IsClassUnlocked(playerClass));
     public bool BuyWeapon(int slot, int weapon, string name) => Buy($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}", WeaponPrice(slot, weapon), $"WEAPON UNLOCKED: {name}", () => IsWeaponUnlocked(slot, weapon));
     public bool BuyPerk(int perk) => Buy($"PrototypeFPS.Unlock.Perk.{perk}", PerkPrices[perk], $"PERK ACQUIRED: {PerkNames[perk]}", () => IsPerkUnlocked(perk), ApplyPerks);
+    public bool BuyLoot(int loot) => Buy($"PrototypeFPS.Unlock.Loot.{loot}", LootPrices[loot], $"HARDCORE LOOT ACQUIRED: {LootNames[loot]}", () => IsLootUnlocked(loot));
+
+    public void BeginMatch() { matchActive = true; pendingCredits = 0; }
+    public void SettleMatch(float multiplier)
+    {
+        int payout = Mathf.RoundToInt(pendingCredits * Mathf.Clamp01(multiplier));
+        matchActive = false;
+        pendingCredits = 0;
+        if (payout > 0) AddMoney(payout, $"+{payout} MATCH PAYOUT");
+    }
 
     public string RedeemPromoCode(string code)
     {
@@ -68,9 +85,37 @@ public sealed class EconomyManager : MonoBehaviour
         for (int weapon = 0; weapon < weaponCounts[slot]; weapon++)
             PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}", 1);
         for (int i = 0; i < PerkPrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Perk.{i}", 1);
+        for (int i = 0; i < LootPrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Loot.{i}", 1);
         PlayerPrefs.Save();
         ApplyPerks();
         Notify("ADMIN: ALL CONTENT UNLOCKED");
+    }
+
+    public void ResetAllProgress()
+    {
+        matchActive = false;
+        pendingCredits = 0;
+        PlayerPrefs.DeleteKey(MoneyKey);
+        PlayerPrefs.DeleteKey("PrototypeFPS.DevMode");
+        PlayerPrefs.DeleteKey("PrototypeFPS.CurrentWave");
+        for (int i = 0; i < ModePrices.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Mode.{i}");
+        for (int i = 0; i < ClassPrices.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Class.{i}");
+        int[] weaponCounts = { 13, 11, 9, 9 };
+        for (int slot = 0; slot < weaponCounts.Length; slot++)
+        for (int weapon = 0; weapon < weaponCounts[slot]; weapon++)
+            PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}");
+        for (int i = 0; i < PerkPrices.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Perk.{i}");
+        for (int i = 0; i < LootPrices.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Loot.{i}");
+        for (int i = 0; i < questNames.Length; i++)
+        {
+            PlayerPrefs.DeleteKey($"PrototypeFPS.Quest.{i}.Progress");
+            PlayerPrefs.DeleteKey($"PrototypeFPS.Quest.{i}.Claimed");
+        }
+        Money = 250;
+        PlayerPrefs.SetInt(MoneyKey, Money);
+        PlayerPrefs.Save();
+        ApplyPerks();
+        Notify("ALL PROGRESS RESET");
     }
 
     private bool Buy(string key, int price, string success, System.Func<bool> owned, System.Action afterPurchase = null)
@@ -92,7 +137,8 @@ public sealed class EconomyManager : MonoBehaviour
             : type == TrainingTarget.EnemyArchetype.Sniper || type == TrainingTarget.EnemyArchetype.Demolition ? 25
             : type == TrainingTarget.EnemyArchetype.Rifle ? 15
             : type == TrainingTarget.EnemyArchetype.Handgun || type == TrainingTarget.EnemyArchetype.Knife ? 8 : 3;
-        AddMoney(reward, $"+{reward} ENEMY BOUNTY");
+        if (IsPerkUnlocked(6)) reward = Mathf.RoundToInt(reward * 1.2f);
+        AwardMatchCredits(reward, $"+{reward} ENEMY BOUNTY");
         if (type != TrainingTarget.EnemyArchetype.Normal) AddQuestProgress(0, 1);
         if (type == TrainingTarget.EnemyArchetype.Tank) AddQuestProgress(2, 1);
     }
@@ -100,13 +146,13 @@ public sealed class EconomyManager : MonoBehaviour
     public void RewardVictory(GameModeManager.Mode mode)
     {
         int reward = 300 + (int)mode * 100;
-        AddMoney(reward, $"+{reward} MATCH VICTORY");
+        AwardMatchCredits(reward, $"+{reward} MATCH VICTORY");
         AddQuestProgress(1, 1);
     }
 
     public void NotifyMissionCompleted()
     {
-        AddMoney(100, "+100 MISSION COMPLETE");
+        AwardMatchCredits(100, "+100 MISSION COMPLETE");
         AddQuestProgress(3, 1);
     }
 
@@ -141,6 +187,12 @@ public sealed class EconomyManager : MonoBehaviour
         Notify(message);
     }
 
+    private void AwardMatchCredits(int amount, string message)
+    {
+        if (matchActive) { pendingCredits += amount; Notify(message); }
+        else AddMoney(amount, message);
+    }
+
     private void Notify(string message)
     {
         LastNotification = message;
@@ -156,9 +208,11 @@ public sealed class EconomyManager : MonoBehaviour
         {
             vitals.PerkDamageReduction = IsPerkUnlocked(1) ? 0.15f : 0f;
             vitals.PerkRegeneration = IsPerkUnlocked(3) ? 1f : 0f;
+            vitals.PerkStaminaMultiplier = IsPerkUnlocked(4) ? 0.75f : 1f;
+            vitals.PerkBonusHealth = IsPerkUnlocked(7) ? 20f : 0f;
         }
         SimpleRifle rifle = FindAnyObjectByType<SimpleRifle>();
-        if (rifle != null) rifle.PerkDamageMultiplier = IsPerkUnlocked(2) ? 1.12f : 1f;
+        if (rifle != null) { rifle.PerkDamageMultiplier = IsPerkUnlocked(2) ? 1.12f : 1f; rifle.PerkAmmoPickupMultiplier = IsPerkUnlocked(5) ? 1.25f : 1f; }
     }
 
     private void OnGUI()

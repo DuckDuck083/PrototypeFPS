@@ -16,6 +16,9 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     private float healthRegeneration;
     public float PerkDamageReduction { get; set; }
     public float PerkRegeneration { get; set; }
+    public float PerkStaminaMultiplier { get; set; } = 1f;
+    public float PerkBonusHealth { get; set; }
+    public bool HardcoreRules { get; set; }
     public bool InfiniteHealth { get; set; }
 
     public void ApplyClassStats(SimpleRifle.PlayerClass playerClass)
@@ -25,14 +28,14 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
             : playerClass == SimpleRifle.PlayerClass.Demoman ? 130f
             : playerClass == SimpleRifle.PlayerClass.Pirate ? 140f
             : 100f;
-        maximumHealth *= modeHealthMultiplier;
+        maximumHealth = maximumHealth * modeHealthMultiplier + PerkBonusHealth;
         Health = maximumHealth;
     }
 
     public void SetModeModifiers(float healthMultiplier, float regenerationPerSecond)
     {
         float baseHealth = maximumHealth / modeHealthMultiplier;
-        modeHealthMultiplier = Mathf.Max(1f, healthMultiplier);
+        modeHealthMultiplier = Mathf.Max(0.1f, healthMultiplier);
         maximumHealth = baseHealth * modeHealthMultiplier;
         healthRegeneration = Mathf.Max(0f, regenerationPerSecond);
         Health = maximumHealth;
@@ -69,6 +72,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
 
         if (healthRegeneration + PerkRegeneration > 0f)
             Health = Mathf.MoveTowards(Health, maximumHealth, (healthRegeneration + PerkRegeneration) * Time.deltaTime);
+        if (HardcoreRules && Stamina <= 0.1f)
+            TakeDamage(2f * Time.deltaTime);
 
         damageFlash = Mathf.MoveTowards(damageFlash, 0f, 1.8f * Time.deltaTime);
     }
@@ -78,7 +83,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         if (!CanSprint)
             return false;
 
-        Stamina = Mathf.Max(0f, Stamina - staminaDrainPerSecond * Time.deltaTime);
+        Stamina = Mathf.Max(0f, Stamina - staminaDrainPerSecond * PerkStaminaMultiplier * Time.deltaTime);
         lastStaminaUseTime = Time.time;
         return true;
     }
@@ -94,6 +99,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         amount *= 1f - Mathf.Clamp01(PerkDamageReduction);
 
         Health = Mathf.Max(0f, Health - amount);
+        FindAnyObjectByType<GameModeManager>()?.RecordHealthLost(amount);
         damageFlash = Mathf.Clamp01(damageFlash + amount / 35f);
         if (Health <= 0f)
             BeginRespawn();
@@ -134,8 +140,23 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         if (controller != null && !controller.enabled) controller.enabled = true;
     }
 
+    public void AddMaximumHealth(float amount)
+    {
+        maximumHealth += Mathf.Max(0f, amount);
+        Health = Mathf.Min(maximumHealth, Health + Mathf.Max(0f, amount));
+    }
+
     private void BeginRespawn()
     {
+        GameModeManager manager = FindAnyObjectByType<GameModeManager>();
+        if (HardcoreRules && manager != null)
+        {
+            isDead = true;
+            GetComponent<FirstPersonController>().enabled = false;
+            GetComponent<SimpleRifle>().enabled = false;
+            manager.Finish(false, "the Hardcore run is over");
+            return;
+        }
         FindAnyObjectByType<WaveManager>()?.SaveProgress();
         isDead = true;
         respawnAt = Time.time + 5f;

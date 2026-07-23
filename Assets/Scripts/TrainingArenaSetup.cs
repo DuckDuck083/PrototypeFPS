@@ -11,6 +11,7 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         modeDirector.AddComponent<WaveManager>();
         modeDirector.AddComponent<GameModeManager>();
         modeDirector.AddComponent<EconomyManager>();
+        modeDirector.AddComponent<GameSettingsManager>();
 
         CreatePickup(new Vector3(5f, 0.7f, 5f), ArenaPickup.PickupType.Health);
         CreatePickup(new Vector3(-18f, 0.7f, 10f), ArenaPickup.PickupType.Health);

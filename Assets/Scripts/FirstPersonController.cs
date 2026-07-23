@@ -37,6 +37,7 @@ public sealed class FirstPersonController : MonoBehaviour
     private float standingCameraHeight;
     private bool isCrouching;
     public float PerkSpeedMultiplier { get; set; } = 1f;
+    public float MouseSensitivity { get => mouseSensitivity; set => mouseSensitivity = Mathf.Clamp(value, 0.03f, 0.4f); }
 
     private void Awake()
     {

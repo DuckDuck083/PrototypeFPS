@@ -273,6 +273,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         health -= amount;
         if (health <= 0f)
         {
+            FindAnyObjectByType<GameModeManager>()?.RecordEnemyKill();
             if (followsPlayer) EconomyManager.Instance?.RewardEnemy(archetype);
             dead = true;
             respawnTime = Time.time + respawnDelay;
