@@ -16,6 +16,7 @@ public sealed class GameMenu : MonoBehaviour
     private bool settingsOpen;
     private bool pausedMatch;
     private bool reportOpen;
+    private bool confirmQuitMatch;
     private bool confirmProgressReset;
     private int shopCategory;
     private int weaponShopSlot;
@@ -43,6 +44,7 @@ public sealed class GameMenu : MonoBehaviour
     private void Update()
     {
         if (Keyboard.current == null) return;
+        if (confirmQuitMatch) return;
         GameModeManager manager = FindAnyObjectByType<GameModeManager>();
         if (!menuOpen && manager != null && !string.IsNullOrEmpty(manager.LastReport))
         {
@@ -59,10 +61,9 @@ public sealed class GameMenu : MonoBehaviour
             ResumeMatch();
         else if (Keyboard.current.escapeKey.wasPressedThisFrame && manager != null && manager.MatchRunning)
         {
-            manager.ExitMatchEarly();
-            pausedMatch = false;
+            pausedMatch = true;
             OpenMenu();
-            reportOpen = true;
+            confirmQuitMatch = true;
         }
     }
 
@@ -77,6 +78,7 @@ public sealed class GameMenu : MonoBehaviour
         adminOpen = false;
         settingsOpen = false;
         reportOpen = false;
+        confirmQuitMatch = false;
         confirmProgressReset = false;
         selectedLoadoutSlot = -1;
         Time.timeScale = 0f;
@@ -131,6 +133,12 @@ public sealed class GameMenu : MonoBehaviour
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
         GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || reportOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
 
+        if (confirmQuitMatch)
+        {
+            DrawQuitConfirmation();
+            return;
+        }
+
         bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || reportOpen;
         if (!subPage)
         {
@@ -181,6 +189,45 @@ public sealed class GameMenu : MonoBehaviour
         }
 
         GUI.Label(new Rect(0f, Mathf.Min(Screen.height - 38f, y + (tileHeight + tileGap) * 3f + 8f), Screen.width, 28f), pausedMatch ? "P resumes  •  ESC exits the match for 0.5x credits" : "P pauses during a match  •  ESC exits the match", CenteredStyle(13));
+    }
+
+    private void DrawQuitConfirmation()
+    {
+        Rect shadow = new Rect(0f, 0f, Screen.width, Screen.height);
+        GUI.color = new Color(0f, 0f, 0f, 0.68f);
+        GUI.DrawTexture(shadow, Texture2D.whiteTexture);
+        Rect panel = new Rect(Screen.width * 0.5f - 270f, Screen.height * 0.5f - 145f, 540f, 290f);
+        GUI.color = new Color(0.045f, 0.06f, 0.08f, 0.99f);
+        GUI.DrawTexture(panel, Texture2D.whiteTexture);
+        GUI.color = new Color(0.95f, 0.2f, 0.14f);
+        GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 5f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        GUIStyle heading = CenteredStyle(26);
+        heading.fontStyle = FontStyle.Bold;
+        heading.normal.textColor = new Color(1f, 0.38f, 0.25f);
+        GUI.Label(new Rect(panel.x + 25f, panel.y + 32f, panel.width - 50f, 42f), "QUIT CURRENT MATCH?", heading);
+        GUIStyle warning = CenteredStyle(15);
+        warning.wordWrap = true;
+        warning.normal.textColor = new Color(0.8f, 0.86f, 0.9f);
+        GUI.Label(new Rect(panel.x + 55f, panel.y + 88f, panel.width - 110f, 62f), "The match will end immediately. You will keep only 0.5x of the credits earned during this run.", warning);
+
+        GUI.backgroundColor = new Color(0.72f, 0.12f, 0.08f);
+        if (GUI.Button(new Rect(panel.x + 55f, panel.y + 188f, 195f, 52f), "YES — QUIT MATCH"))
+        {
+            GameModeManager manager = FindAnyObjectByType<GameModeManager>();
+            manager?.ExitMatchEarly();
+            confirmQuitMatch = false;
+            pausedMatch = false;
+            reportOpen = true;
+        }
+        GUI.backgroundColor = new Color(0.12f, 0.58f, 0.82f);
+        if (GUI.Button(new Rect(panel.x + 290f, panel.y + 188f, 195f, 52f), "NO — RESUME"))
+        {
+            confirmQuitMatch = false;
+            ResumeMatch();
+        }
+        GUI.backgroundColor = Color.white;
     }
 
     private static void DrawHomeTile(Rect rect, string title, string subtitle, Color accent, System.Action action)
