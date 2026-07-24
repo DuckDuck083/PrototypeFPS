@@ -188,7 +188,7 @@ public sealed class EconomyManager : MonoBehaviour
     {
         for (int i = 0; i < ModePrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Mode.{i}", 1);
         for (int i = 0; i < ClassPrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Class.{i}", 1);
-        int[] weaponCounts = { 16, 11, 10, 10 };
+        int[] weaponCounts = { 17, 12, 11, 11 };
         for (int slot = 0; slot < weaponCounts.Length; slot++)
         for (int weapon = 0; weapon < weaponCounts[slot]; weapon++)
             PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}", 1);
@@ -213,7 +213,7 @@ public sealed class EconomyManager : MonoBehaviour
         PlayerPrefs.DeleteKey("PrototypeFPS.CurrentWave");
         for (int i = 0; i < ModePrices.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Mode.{i}");
         for (int i = 0; i < ClassPrices.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Class.{i}");
-        int[] weaponCounts = { 16, 11, 10, 10 };
+        int[] weaponCounts = { 17, 12, 11, 11 };
         for (int slot = 0; slot < weaponCounts.Length; slot++)
         for (int weapon = 0; weapon < weaponCounts[slot]; weapon++)
         {
@@ -382,7 +382,7 @@ public sealed class EconomyManager : MonoBehaviour
 
     private void UnlockRandomWeapon(int tier)
     {
-        int[] counts = { 16, 11, 10, 10 };
+        int[] counts = { 17, 12, 11, 11 };
         List<Vector2Int> locked = new List<Vector2Int>();
         for (int slot = 0; slot < counts.Length; slot++)
         for (int weapon = 0; weapon < counts[slot]; weapon++)

@@ -51,10 +51,10 @@ public sealed class SimpleRifle : MonoBehaviour
     private int currentSlot;
     private static readonly string[][] SlotWeaponNames =
     {
-        new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER", "SNIPER RIFLE", "BURST RIFLE", "HEAVY CANNON", "ARC SHOOTER", "INCENDIARY LAUNCHER", "SMG", "BOLT-ACTION RIFLE", "LASER RIFLE", "BOW AND ARROW", "SPRAYER" },
-        new[] { "RIOT SHIELD", "HANDGUN", "REVOLVER", "MEDPACK", "SHOTGUN", "TURRET BUILDER", "STICKYBOMB LAUNCHER", "MACHINE PISTOL", "LMG", "POISON DART", "FLINTLOCK" },
-        new[] { "BATON", "FISTS", "KNIFE", "SCYTHE", "AXE", "WRENCH", "MACHETE", "HEALING KATANA", "PIRATE SWORD", "METAL PIPE" },
-        new[] { "SNIPER RIFLE", "FRAG GRENADE", "SMOKE GRENADE", "PROXIMITY MINE", "VAMP PISTOL", "FLASHBANG", "BARRIER", "FIRE BOMB", "PIRATE CANNON", "ENERGY DRINK" }
+        new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER", "SNIPER RIFLE", "BURST RIFLE", "HEAVY CANNON", "ARC SHOOTER", "INCENDIARY LAUNCHER", "SMG", "BOLT-ACTION RIFLE", "LASER RIFLE", "BOW AND ARROW", "SPRAYER", "SKYFIRE CARBINE" },
+        new[] { "RIOT SHIELD", "HANDGUN", "REVOLVER", "MEDPACK", "SHOTGUN", "TURRET BUILDER", "STICKYBOMB LAUNCHER", "MACHINE PISTOL", "LMG", "POISON DART", "FLINTLOCK", "KICKBACK PISTOL" },
+        new[] { "BATON", "FISTS", "KNIFE", "SCYTHE", "AXE", "WRENCH", "MACHETE", "HEALING KATANA", "PIRATE SWORD", "METAL PIPE", "VELOCITY CLEAVER" },
+        new[] { "SNIPER RIFLE", "FRAG GRENADE", "SMOKE GRENADE", "PROXIMITY MINE", "VAMP PISTOL", "FLASHBANG", "BARRIER", "FIRE BOMB", "PIRATE CANNON", "ENERGY DRINK", "BLINK DRIVE" }
     };
     private int rifleAmmo;
     private int handgunAmmo;
@@ -80,6 +80,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private float nextTurretTime;
     private float energyDrinkUntil;
     private float nextEnergyDrinkTime;
+    private float nextBlinkTime;
     private EngineerTurret activeTurret;
     public PlayerClass CurrentClass { get; private set; } = PlayerClass.Soldier;
     private readonly System.Collections.Generic.List<ExplosiveProjectile> activeStickies = new System.Collections.Generic.List<ExplosiveProjectile>();
@@ -225,23 +226,23 @@ public sealed class SimpleRifle : MonoBehaviour
         slotSelections[slotIndex] = weaponIndex;
         if (slotIndex == 0)
         {
-            int[] magazines = { 30, 4, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5, 24, 1, 2 };
-            int[] reserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25, 120, 30, 40 };
+            int[] magazines = { 30, 4, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5, 24, 1, 2, 18 };
+            int[] reserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25, 120, 30, 40, 108 };
             rifleMagazineSize = magazines[weaponIndex];
             rifleAmmo = rifleMagazineSize;
             rifleReserveAmmo = reserves[weaponIndex];
         }
         else if (slotIndex == 1)
         {
-            int[] magazines = { 0, 12, 6, 3, 8, 0, 8, 24, 60, 8, 1 };
-            int[] reserves = { 0, 48, 30, 0, 32, 0, 24, 96, 240, 32, 20 };
+            int[] magazines = { 0, 12, 6, 3, 8, 0, 8, 24, 60, 8, 1, 6 };
+            int[] reserves = { 0, 48, 30, 0, 32, 0, 24, 96, 240, 32, 20, 36 };
             handgunMagazineSize = Mathf.Max(1, magazines[weaponIndex]);
             handgunAmmo = magazines[weaponIndex];
             handgunReserveAmmo = reserves[weaponIndex];
         }
         else if (slotIndex == 3)
         {
-            int[] ammunition = { 1, 4, 3, 2, 10, 3, 5, 3, 4, 0 };
+            int[] ammunition = { 1, 4, 3, 2, 10, 3, 5, 3, 4, 0, 0 };
             sniperMagazineSize = ammunition[weaponIndex];
             sniperAmmo = ammunition[weaponIndex];
             sniperReserveAmmo = weaponIndex == 0 ? 24 : 0;
@@ -286,6 +287,10 @@ public sealed class SimpleRifle : MonoBehaviour
         if (slotIndex == 0 && optionIndex == 15) return "2 shells • rapid shotgun blast • wide spread";
         if (slotIndex == 2 && optionIndex == 9) return "Fast, heavy close-range strikes";
         if (slotIndex == 3 && optionIndex == 9) return "7s speed + damage boost • take 40% more damage";
+        if (slotIndex == 0 && optionIndex == 16) return "32 damage while airborne • accurate automatic";
+        if (slotIndex == 1 && optionIndex == 11) return "42 damage • recoil launches you backward";
+        if (slotIndex == 2 && optionIndex == 10) return "Very fast cleaver • stronger while moving";
+        if (slotIndex == 3 && optionIndex == 10) return "Blink 7 meters forward • 6s cooldown";
         return string.Empty;
     }
 
@@ -294,35 +299,36 @@ public sealed class SimpleRifle : MonoBehaviour
         string name = GetLoadoutOptionName(slot, weapon);
         if (slot == 0)
         {
-            float[] damage = { 24, 110, 144, 10, 95, 120, 98, 51, 58, 64, 80, 16, 72, 58, 115, 150 };
-            int[] clips = { 30, 4, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5, 24, 1, 2 };
+            float[] damage = { 24, 110, 144, 10, 95, 120, 98, 51, 58, 64, 80, 16, 72, 58, 115, 150, 20 };
+            int[] clips = { 30, 4, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5, 24, 1, 2, 18 };
             string[] traits =
             {
                 "Automatic • balanced", "Explosive splash", "12-pellet spread", "Extreme fire rate",
                 "Bouncing explosive", "Remote sticky bombs", "Charge • pierces 3 enemies", "Three-round burst",
                 "Heavy impact", "Chains between enemies", "Ignites targets", "Fast movement weapon",
-                "Bolt action • headshots", "No falloff • pinpoint", "Silent • 3× headshots", "10 pellets • ultra-fast shotgun"
+                "Bolt action • headshots", "No falloff • pinpoint", "Silent • 3× headshots", "10 pellets • ultra-fast shotgun",
+                "32 damage while airborne • accurate automatic"
             };
             return $"{name}\nAVERAGE DAMAGE  {damage[weapon]:0}\nBULLETS PER CLIP  {clips[weapon]}\nABILITY  {traits[weapon]}";
         }
         if (slot == 1)
         {
-            float[] damage = { 0, 22, 48, 0, 144, 0, 120, 13, 14, 40, 68 };
-            int[] clips = { 0, 12, 6, 3, 8, 0, 8, 24, 60, 8, 1 };
-            string[] traits = { "Blocks 80% incoming damage", "Reliable sidearm", "Critical-hit chance", "Heals 35 health", "12-pellet spread", "Deploys turret", "Remote sticky bombs", "Automatic", "Sustained fire", "Poison damage", "High damage • slow reload" };
+            float[] damage = { 0, 22, 48, 0, 144, 0, 120, 13, 14, 40, 68, 42 };
+            int[] clips = { 0, 12, 6, 3, 8, 0, 8, 24, 60, 8, 1, 6 };
+            string[] traits = { "Blocks 80% incoming damage", "Reliable sidearm", "Critical-hit chance", "Heals 35 health", "12-pellet spread", "Deploys turret", "Remote sticky bombs", "Automatic", "Sustained fire", "Poison damage", "High damage • slow reload", "Recoil launches wielder backward" };
             return $"{name}\nAVERAGE DAMAGE  {damage[weapon]:0}\nBULLETS PER CLIP  {clips[weapon]}\nABILITY  {traits[weapon]}";
         }
         if (slot == 2)
         {
-            float[] damage = { 45, 38, 60, 85, 78, 52, 68, 72, 64, 70 };
-            string[] traits = { "Balanced melee", "Very fast attacks", "Fast critical chance", "Dash attack", "Heavy strike", "Repairs turrets", "Long blade", "Heals on combat", "Pirate blade", "Fast heavy swings" };
+            float[] damage = { 45, 38, 60, 85, 78, 52, 68, 72, 64, 70, 58 };
+            string[] traits = { "Balanced melee", "Very fast attacks", "Fast critical chance", "Dash attack", "Heavy strike", "Repairs turrets", "Long blade", "Heals on combat", "Pirate blade", "Fast heavy swings", "Ultra-fast movement weapon" };
             return $"{name}\nAVERAGE DAMAGE  {damage[weapon]:0}\nBULLETS PER CLIP  N/A\nABILITY  {traits[weapon]}";
         }
         string[] utility =
         {
             "Charged rifle • pierces 3", "Timed fragmentation explosive", "Blocks enemy vision", "Proximity explosive",
             "Heals on hit", "Stuns enemies", "Deployable cover", "Area fire damage", "Explosive cannonball",
-            "7s speed/damage buff • +40% damage taken"
+            "7s speed/damage buff • +40% damage taken", "Blink 7 meters forward • 6s cooldown"
         };
         return $"{name}\nAVERAGE DAMAGE  VARIES\nBULLETS PER CLIP  N/A\nABILITY  {utility[weapon]}";
     }
@@ -336,7 +342,7 @@ public sealed class SimpleRifle : MonoBehaviour
         new[] { new[] { 4 }, new[] { 6 }, new[] { 0, 3, 6 }, new[] { 3, 5 } },
         new[] { new[] { 11, 13 }, new[] { 9 }, new[] { 7, 3 }, new[] { 7 } },
         new[] { new[] { 12 }, new[] { 10 }, new[] { 8, 3 }, new[] { 8 } },
-        new[] { new[] { 15 }, new[] { 1 }, new[] { 9 }, new[] { 9 } }
+        new[] { new[] { 15, 16 }, new[] { 1, 11 }, new[] { 9, 10 }, new[] { 9, 10 } }
     };
 
     public int GetClassOptionCount(int slotIndex) => ClassLoadouts[(int)CurrentClass][slotIndex].Length;
@@ -476,6 +482,11 @@ public sealed class SimpleRifle : MonoBehaviour
             AddPart(model, "Sprayer Twin Barrel", new Vector3(0f, 0.02f, 0.76f), new Vector3(0.3f, 0.2f, 0.62f), metal);
             AddPart(model, "Sprayer Drum", new Vector3(0f, -0.18f, 0.26f), new Vector3(0.32f, 0.3f, 0.28f), dark, 90f);
         }
+        else if (slot == 0 && option == 16)
+        {
+            AddPart(model, "Skyfire Vent", new Vector3(0f, 0.14f, 0.38f), new Vector3(0.3f, 0.1f, 0.48f), electric);
+            AddPart(model, "Aerial Stabilizer", new Vector3(0f, -0.08f, 0.82f), new Vector3(0.36f, 0.07f, 0.28f), metal);
+        }
         else if (slot == 1 && option == 8)
         {
             AddPart(model, "LMG Drum", new Vector3(0f, -0.2f, 0.3f), new Vector3(0.42f, 0.38f, 0.25f), dark, 90f);
@@ -487,6 +498,11 @@ public sealed class SimpleRifle : MonoBehaviour
         {
             AddPart(model, "Flintlock Stock", new Vector3(0f, -0.12f, 0.06f), new Vector3(0.2f, 0.42f, 0.18f), wood, 18f);
             AddPart(model, "Flint Hammer", new Vector3(0.1f, 0.13f, 0.18f), new Vector3(0.08f, 0.16f, 0.08f), metal, -25f);
+        }
+        else if (slot == 1 && option == 11)
+        {
+            AddPart(model, "Kickback Brake", new Vector3(0f, 0.02f, 0.68f), new Vector3(0.28f, 0.2f, 0.24f), electric);
+            AddPart(model, "Recoil Spring", new Vector3(0f, -0.08f, 0.18f), new Vector3(0.2f, 0.3f, 0.2f), dark);
         }
         else if (slot == 2 && option == 7)
         {
@@ -503,6 +519,11 @@ public sealed class SimpleRifle : MonoBehaviour
             AddPart(model, "Pipe Shaft", new Vector3(0f, 0.38f, 0.18f), new Vector3(0.14f, 0.82f, 0.14f), metal, 20f);
             AddPart(model, "Pipe Coupler", new Vector3(0f, 0.76f, 0.3f), new Vector3(0.22f, 0.18f, 0.22f), dark, 20f);
         }
+        else if (slot == 2 && option == 10)
+        {
+            AddPart(model, "Cleaver Blade", new Vector3(0f, 0.44f, 0.18f), new Vector3(0.2f, 0.76f, 0.045f), electric, 22f);
+            AddPart(model, "Speed Holes", new Vector3(0f, 0.48f, 0.14f), new Vector3(0.08f, 0.42f, 0.03f), dark, 22f);
+        }
         else if (slot == 3 && option == 5) AddPart(model, "Flash Charge", Vector3.zero, new Vector3(0.3f, 0.32f, 0.3f), electric);
         else if (slot == 3 && option == 6) AddPart(model, "Barrier Projector", Vector3.zero, new Vector3(0.42f, 0.28f, 0.32f), electric);
         else if (slot == 3 && option == 7) AddPart(model, "Fire Bottle", Vector3.zero, new Vector3(0.25f, 0.42f, 0.25f), fire);
@@ -515,6 +536,11 @@ public sealed class SimpleRifle : MonoBehaviour
         {
             AddPart(model, "Drink Can", Vector3.zero, new Vector3(0.24f, 0.42f, 0.24f), electric);
             AddPart(model, "Can Tab", new Vector3(0f, 0.24f, 0f), new Vector3(0.1f, 0.025f, 0.15f), metal);
+        }
+        else if (slot == 3 && option == 10)
+        {
+            AddPart(model, "Blink Core", Vector3.zero, new Vector3(0.3f, 0.3f, 0.3f), electric);
+            AddPart(model, "Blink Prongs", new Vector3(0f, 0.1f, 0.28f), new Vector3(0.42f, 0.08f, 0.3f), metal);
         }
     }
 
@@ -667,6 +693,7 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 13 && attackAction.IsPressed()) FireLaserRifle();
             else if (option == 14 && attackAction.WasPressedThisFrame()) FireBow();
             else if (option == 15 && attackAction.IsPressed()) FireHitscan(15f, 0.16f, 10, IsAiming ? 0.1f : 0.16f, false);
+            else if (option == 16 && attackAction.IsPressed()) FireSkyfireCarbine();
         }
         else if (currentSlot == 1)
         {
@@ -687,12 +714,14 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 8 && attackAction.IsPressed()) FireHitscan(14f, 0.08f, 1, IsAiming ? 0.008f : 0.025f, false);
             else if (option == 9 && attackAction.WasPressedThisFrame()) FirePoisonDart();
             else if (option == 10 && attackAction.WasPressedThisFrame()) FireHitscan(68f, 1.25f, 1, 0.018f, true);
+            else if (option == 11 && attackAction.WasPressedThisFrame()) FireKickbackPistol();
         }
         else if (currentSlot == 2 && attackAction.IsPressed())
         {
-            float[] damages = { 45f, 38f, 60f, 85f, 78f, 52f, 68f, 72f, 64f, 70f };
-            float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f, 0.78f, 0.55f, 0.62f, 0.7f, 0.58f, 0.48f };
-            SwingMelee(damages[option], delays[option], option == 3 ? 3.2f : 2.4f, option == 2 ? 0.22f : 0f);
+            float[] damages = { 45f, 38f, 60f, 85f, 78f, 52f, 68f, 72f, 64f, 70f, 58f };
+            float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f, 0.78f, 0.55f, 0.62f, 0.7f, 0.58f, 0.48f, 0.34f };
+            float movementBonus = option == 10 && GetComponent<CharacterController>().velocity.magnitude > 4f ? 1.4f : 1f;
+            SwingMelee(damages[option] * movementBonus, delays[option], option == 3 ? 3.2f : 2.4f, option == 2 ? 0.22f : 0f);
         }
         else if (currentSlot == 3)
         {
@@ -706,6 +735,7 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 7 && attackAction.WasPressedThisFrame()) LaunchIncendiary(false);
             else if (option == 8 && attackAction.WasPressedThisFrame()) LaunchPirateCannon();
             else if (option == 9 && attackAction.WasPressedThisFrame()) DrinkEnergyDrink();
+            else if (option == 10 && attackAction.WasPressedThisFrame()) ActivateBlinkDrive();
         }
 
     }
@@ -799,6 +829,19 @@ public sealed class SimpleRifle : MonoBehaviour
         FindAnyObjectByType<GameModeManager>()?.RecordShot(hitEnemy);
         ApplyRecoil(1.4f, 0.2f);
         if (CurrentAmmo == 0) TryReload();
+    }
+
+    private void FireSkyfireCarbine()
+    {
+        bool airborne = !GetComponent<CharacterController>().isGrounded;
+        FireHitscan(airborne ? 32f : 20f, 0.11f, 1, IsAiming ? 0.002f : 0.009f, true);
+    }
+
+    private void FireKickbackPistol()
+    {
+        if (CurrentAmmo <= 0) { TryReload(); return; }
+        FireHitscan(42f, 0.48f, 1, IsAiming ? 0.004f : 0.012f, true);
+        GetComponent<CharacterController>().Move(-transform.forward * 2.4f);
     }
 
     private IEnumerator FireBurstRifle()
@@ -1012,6 +1055,14 @@ public sealed class SimpleRifle : MonoBehaviour
         nextEnergyDrinkTime = Time.time + 18f;
         nextShotTime = Time.time + 0.7f;
         currentModel.localRotation = Quaternion.Euler(-65f, 0f, -35f);
+    }
+
+    private void ActivateBlinkDrive()
+    {
+        if (Time.time < nextBlinkTime) return;
+        nextBlinkTime = Time.time + 6f;
+        nextShotTime = Time.time + 0.35f;
+        GetComponent<CharacterController>().Move(transform.forward * 7f);
     }
 
     private static string GetWeaponName(WeaponType weapon)
@@ -1434,9 +1485,9 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public void RestoreSpawnAmmo()
     {
-        int[] primaryReserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25, 120, 30, 40 };
-        int[] secondaryReserves = { 0, 48, 30, 0, 32, 0, 24, 96, 240, 32, 20 };
-        int[] specialistAmmo = { 1, 4, 3, 2, 10, 3, 5, 3, 4, 0 };
+        int[] primaryReserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25, 120, 30, 40, 108 };
+        int[] secondaryReserves = { 0, 48, 30, 0, 32, 0, 24, 96, 240, 32, 20, 36 };
+        int[] specialistAmmo = { 1, 4, 3, 2, 10, 3, 5, 3, 4, 0, 0 };
         rifleAmmo = rifleMagazineSize;
         rifleReserveAmmo = primaryReserves[slotSelections[0]];
         handgunAmmo = slotSelections[1] == 0 ? 0 : handgunMagazineSize;
@@ -1656,7 +1707,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (!scoped) GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
         string weaponName = SlotWeaponNames[currentSlot][slotSelections[currentSlot]];
         bool hidesAmmo = currentSlot == 2 || (currentSlot == 1 && (slotSelections[1] == 0 || slotSelections[1] == 3 || slotSelections[1] == 5))
-            || (currentSlot == 3 && slotSelections[3] == 9);
+            || (currentSlot == 3 && slotSelections[3] >= 9);
         string ammoText = hidesAmmo ? weaponName
             : currentWeapon == WeaponType.Sniper && slotSelections[3] != 0 ? $"{weaponName}  {sniperAmmo}"
             : isReloading ? $"{weaponName}  RELOADING..." : $"{weaponName}  {CurrentAmmo} / {CurrentReserve}";
@@ -1672,7 +1723,11 @@ public sealed class SimpleRifle : MonoBehaviour
         {
             float drinkRemaining = Mathf.Max(0f, energyDrinkUntil - Time.time);
             float cooldownRemaining = Mathf.Max(0f, nextEnergyDrinkTime - Time.time);
-            string drinkStatus = drinkRemaining > 0f ? $"ENERGY RUSH  {drinkRemaining:0.0}s"
+            float blinkRemaining = Mathf.Max(0f, nextBlinkTime - Time.time);
+            bool blinkEquipped = slotSelections[3] == 10;
+            string drinkStatus = blinkEquipped
+                ? blinkRemaining > 0f ? $"BLINK DRIVE  {blinkRemaining:0.0}s" : "BLINK DRIVE READY"
+                : drinkRemaining > 0f ? $"ENERGY RUSH  {drinkRemaining:0.0}s"
                 : cooldownRemaining > 0f ? $"ENERGY DRINK  {cooldownRemaining:0.0}s"
                 : "ENERGY DRINK READY";
             GUIStyle scoutStatus = new GUIStyle(help) { alignment = TextAnchor.UpperRight, fontStyle = FontStyle.Bold };
