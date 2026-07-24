@@ -62,7 +62,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private float nextShotTime;
     private float normalFieldOfView;
     private float sniperCharge;
-    private const float MaximumSniperChargeTime = 2.6f;
+    private const float MaximumSniperChargeTime = 3f;
     private float reloadProgress;
     private float hitMarkerUntil;
     private float lastDamageAmount;
@@ -274,7 +274,7 @@ public sealed class SimpleRifle : MonoBehaviour
     public string GetLoadoutOptionDescription(int slotIndex, int optionIndex)
     {
         if (slotIndex == 0 && optionIndex == 6) return "Charged shots pierce up to 3 enemies.";
-        if (slotIndex == 0 && optionIndex == 13) return "42 damage • pinpoint beam • no range falloff";
+        if (slotIndex == 0 && optionIndex == 13) return "58 damage • pinpoint beam • no range falloff";
         if (slotIndex == 0 && optionIndex == 14) return "115 damage • silent • 3× headshots";
         return string.Empty;
     }
@@ -325,7 +325,7 @@ public sealed class SimpleRifle : MonoBehaviour
         Transform model = slotIndex == 0 ? rifleModel : slotIndex == 1 ? handgunModel : slotIndex == 2 ? meleeModel : sniperModel;
         foreach (Transform child in model) Destroy(child.gameObject);
         Material dark = CreateMaterial(new Color(0.07f, 0.08f, 0.09f));
-        Material metal = CreateMaterial(new Color(0.2f, 0.23f, 0.26f));
+        Material metal = CreateMaterial(EconomyManager.Instance != null ? EconomyManager.Instance.ActiveSkinColor : new Color(0.2f, 0.23f, 0.26f));
 
         if (slotIndex == 0 && option == 1 && assault1Prefab != null)
         {
@@ -373,6 +373,12 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         AddVariantDetails(model, slotIndex, option, dark, metal);
         AddAdvancedWeaponDetails(model, slotIndex, option, dark, metal);
+    }
+
+    public void RefreshWeaponModel()
+    {
+        for (int i = 0; i < builtVariants.Length; i++) builtVariants[i] = -1;
+        BuildSelectedVariantModel(currentSlot);
     }
 
     private static void AddAdvancedWeaponDetails(Transform model, int slot, int option, Material dark, Material metal)
@@ -691,7 +697,7 @@ public sealed class SimpleRifle : MonoBehaviour
         {
             end = hit.point;
             hitEnemy = hit.collider.GetComponentInParent<TrainingTarget>() != null;
-            ApplyDamage(hit, 42f, true, 0f, true);
+            ApplyDamage(hit, 58f, true, 0f, true);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
         CreateColoredTracer(end, new Color(0.05f, 1f, 1f), 0.032f, 0.1f);
@@ -912,7 +918,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private void PlaceTurret()
     {
         if (activeTurret != null || Time.time < nextTurretTime) return;
-        nextTurretTime = Time.time + 10f;
+        nextTurretTime = Time.time + 7f;
         GameObject turret = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         turret.name = "Engineer Turret";
         turret.transform.position = transform.position + transform.forward * 2f + Vector3.up * 0.38f;
@@ -1180,7 +1186,7 @@ public sealed class SimpleRifle : MonoBehaviour
         bool aimedShot = IsAiming;
         float baseDelay = currentWeapon == WeaponType.Rifle ? 0.12f : currentWeapon == WeaponType.Handgun ? 0.28f : 1.1f;
         bool sniperShot = IsSniperRifleEquipped;
-        float damage = sniperShot ? Mathf.Lerp(70f, 160f, sniperChargeRatio) : currentWeapon == WeaponType.Rifle ? 25f : currentWeapon == WeaponType.Handgun ? 18f : 70f;
+        float damage = sniperShot ? Mathf.Lerp(60f, 135f, sniperChargeRatio) : currentWeapon == WeaponType.Rifle ? 25f : currentWeapon == WeaponType.Handgun ? 18f : 70f;
         damage *= Random.Range(0.94f, 1.07f);
         if (aimedShot)
         {
@@ -1627,7 +1633,7 @@ public sealed class SimpleRifle : MonoBehaviour
 
         if (currentSlot == 1 && slotSelections[1] == 5)
         {
-            float ready = activeTurret != null ? 0f : Mathf.Clamp01(1f - (nextTurretTime - Time.time) / 10f);
+            float ready = activeTurret != null ? 0f : Mathf.Clamp01(1f - (nextTurretTime - Time.time) / 7f);
             Rect turretBar = new Rect(Screen.width * 0.5f - 105f, Screen.height - 145f, 210f, 13f);
             GUI.color = new Color(0f, 0f, 0f, 0.85f);
             GUI.DrawTexture(turretBar, Texture2D.whiteTexture);

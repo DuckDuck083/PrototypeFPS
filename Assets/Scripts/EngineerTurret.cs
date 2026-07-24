@@ -2,10 +2,10 @@ using UnityEngine;
 
 public sealed class EngineerTurret : MonoBehaviour, IDamageable
 {
-    private const float MaximumHealth = 220f;
-    private const float Range = 38f;
-    private const float FireInterval = 0.16f;
-    private const float Damage = 13f;
+    private const float MaximumHealth = 300f;
+    private const float Range = 44f;
+    private const float FireInterval = 0.14f;
+    private const float Damage = 16f;
     private float health = MaximumHealth;
     private float nextShotTime;
     private Transform head;

@@ -25,6 +25,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     {
         maximumHealth = playerClass == SimpleRifle.PlayerClass.Soldier ? 120f
             : playerClass == SimpleRifle.PlayerClass.Tank ? 250f
+            : playerClass == SimpleRifle.PlayerClass.Engineer ? 140f
+            : playerClass == SimpleRifle.PlayerClass.Sniper ? 85f
             : playerClass == SimpleRifle.PlayerClass.Demoman ? 130f
             : playerClass == SimpleRifle.PlayerClass.Pirate ? 140f
             : 100f;

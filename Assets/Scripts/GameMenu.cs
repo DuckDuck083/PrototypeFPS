@@ -166,29 +166,54 @@ public sealed class GameMenu : MonoBehaviour
 
     private void DrawMainMenu()
     {
-        float dashboardWidth = Mathf.Min(720f, Screen.width - 40f);
-        float tileGap = 14f;
-        float tileWidth = (dashboardWidth - tileGap) * 0.5f;
-        float tileHeight = Mathf.Clamp((Screen.height - 260f) / 3f, 76f, 112f);
-        float x = (Screen.width - dashboardWidth) * 0.5f;
-        float y = Mathf.Max(145f, Screen.height * 0.5f - tileHeight * 1.35f);
+        EconomyManager economy = EconomyManager.Instance;
+        float top = Mathf.Max(128f, Screen.height * 0.18f);
+        Rect profile = new Rect(42f, top, Mathf.Min(430f, Screen.width * 0.42f), 310f);
+        GUI.color = new Color(0.035f, 0.065f, 0.09f, 0.96f);
+        GUI.DrawTexture(profile, Texture2D.whiteTexture);
+        GUI.color = new Color(0.2f, 0.72f, 1f);
+        GUI.DrawTexture(new Rect(profile.x, profile.y, 6f, profile.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle profileLabel = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold };
+        profileLabel.normal.textColor = new Color(0.55f, 0.7f, 0.8f);
+        GUI.Label(new Rect(profile.x + 28f, profile.y + 24f, profile.width - 56f, 24f), "SERVICE RECORD", profileLabel);
+        GUIStyle rank = new GUIStyle(profileLabel) { fontSize = 27 };
+        rank.normal.textColor = new Color(0.3f, 0.82f, 1f);
+        GUI.Label(new Rect(profile.x + 28f, profile.y + 58f, profile.width - 56f, 42f), economy != null ? economy.RankName : "RECRUIT", rank);
+        int xp = economy != null ? economy.Experience : 0;
+        int nextXp = economy != null ? economy.NextRankXp : 100;
+        GUI.Label(new Rect(profile.x + 28f, profile.y + 112f, profile.width - 56f, 24f), $"XP  {xp:N0} / {nextXp:N0}", profileLabel);
+        Rect xpBar = new Rect(profile.x + 28f, profile.y + 145f, profile.width - 56f, 14f);
+        GUI.color = new Color(0.01f, 0.02f, 0.03f);
+        GUI.DrawTexture(xpBar, Texture2D.whiteTexture);
+        GUI.color = new Color(0.18f, 0.7f, 1f);
+        GUI.DrawTexture(new Rect(xpBar.x + 2f, xpBar.y + 2f, (xpBar.width - 4f) * (economy != null ? economy.RankProgress : 0f), xpBar.height - 4f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle money = new GUIStyle(profileLabel) { fontSize = 24 };
+        money.normal.textColor = new Color(1f, 0.76f, 0.18f);
+        GUI.Label(new Rect(profile.x + 28f, profile.y + 190f, profile.width - 56f, 36f), $"◆ {(economy != null ? economy.Money : 0):N0} CREDITS", money);
+        GUI.Label(new Rect(profile.x + 28f, profile.y + 244f, profile.width - 56f, 24f), $"SKINS  {(economy != null ? economy.OwnedSkinCount : 0)}    XP BOOST  {(economy != null ? economy.XpBoostMatches : 0)} MATCHES", profileLabel);
 
-        DrawHomeTile(new Rect(x, y, tileWidth, tileHeight), pausedMatch ? "RESUME" : "PLAY", pausedMatch ? "Return to the current match" : "Choose a game mode", new Color(0.15f, 0.65f, 0.95f), () => { if (pausedMatch) ResumeMatch(); else { pageScroll = Vector2.zero; playModeOpen = true; } });
-        DrawHomeTile(new Rect(x + tileWidth + tileGap, y, tileWidth, tileHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
-        DrawHomeTile(new Rect(x, y + tileHeight + tileGap, tileWidth, tileHeight), "BLACK MARKET", "Modes, weapons and perks", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
-        DrawHomeTile(new Rect(x + tileWidth + tileGap, y + tileHeight + tileGap, tileWidth, tileHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
-        DrawHomeTile(new Rect(x, y + (tileHeight + tileGap) * 2f, tileWidth, tileHeight), "PROMO CODES", "Redeem special access", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
+        float buttonWidth = Mathf.Min(330f, Screen.width * 0.36f);
+        float buttonX = Screen.width - buttonWidth - 42f;
+        float buttonHeight = 58f;
+        float gap = 10f;
+        DrawHomeTile(new Rect(buttonX, top, buttonWidth, buttonHeight), pausedMatch ? "RESUME" : "PLAY", pausedMatch ? "Return to match" : "Choose game mode", new Color(0.15f, 0.65f, 0.95f), () => { if (pausedMatch) ResumeMatch(); else { pageScroll = Vector2.zero; playModeOpen = true; } });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap), buttonWidth, buttonHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 2f, buttonWidth, buttonHeight), "BLACK MARKET", "Shop and crates", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 3f, buttonWidth, buttonHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 4f, buttonWidth, buttonHeight), "PROMO CODES", "Redeem rewards", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
         bool dev = EconomyManager.Instance != null && EconomyManager.Instance.DevModeUnlocked;
-        DrawHomeTile(new Rect(x + tileWidth + tileGap, y + (tileHeight + tileGap) * 2f, tileWidth, tileHeight), "SETTINGS", "Audio, controls and display", new Color(0.48f, 0.68f, 0.9f), () => { pageScroll = Vector2.zero; settingsOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 5f, buttonWidth, buttonHeight), "SETTINGS", "Audio, controls and display", new Color(0.48f, 0.68f, 0.9f), () => { pageScroll = Vector2.zero; settingsOpen = true; });
 
         if (dev)
         {
             GUI.backgroundColor = new Color(0.72f, 0.12f, 0.08f);
-            if (GUI.Button(new Rect(Screen.width - 178f, 88f, 150f, 38f), "ADMIN PANEL")) { pageScroll = Vector2.zero; adminOpen = true; }
+            if (GUI.Button(new Rect(profile.x + 28f, profile.y + profile.height - 46f, 150f, 32f), "ADMIN PANEL")) { pageScroll = Vector2.zero; adminOpen = true; }
             GUI.backgroundColor = Color.white;
         }
 
-        GUI.Label(new Rect(0f, Mathf.Min(Screen.height - 38f, y + (tileHeight + tileGap) * 3f + 8f), Screen.width, 28f), pausedMatch ? "P resumes  •  ESC exits the match for 0.5x credits" : "P pauses during a match  •  ESC exits the match", CenteredStyle(13));
+        GUI.Label(new Rect(0f, Screen.height - 38f, Screen.width, 28f), pausedMatch ? "P resumes  •  ESC exits the match for 0.5x credits" : "P pauses during a match  •  ESC exits the match", CenteredStyle(13));
     }
 
     private void DrawQuitConfirmation()
@@ -238,13 +263,13 @@ public sealed class GameMenu : MonoBehaviour
         GUI.color = accent;
         GUI.DrawTexture(new Rect(rect.x, rect.y, 5f, rect.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
-        GUIStyle heading = CenteredStyle(19);
+        GUIStyle heading = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft, fontSize = 16 };
         heading.fontStyle = FontStyle.Bold;
         heading.normal.textColor = accent;
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 15f, rect.width - 32f, 28f), title, heading);
-        GUIStyle detail = CenteredStyle(13);
+        GUI.Label(new Rect(rect.x + 20f, rect.y + 6f, rect.width - 40f, 25f), title, heading);
+        GUIStyle detail = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft, fontSize = 11 };
         detail.normal.textColor = new Color(0.72f, 0.8f, 0.85f);
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 47f, rect.width - 32f, 25f), subtitle, detail);
+        GUI.Label(new Rect(rect.x + 20f, rect.y + 30f, rect.width - 40f, 20f), subtitle, detail);
     }
 
     private void DrawModeSelection()
@@ -475,8 +500,8 @@ public sealed class GameMenu : MonoBehaviour
         balance.normal.textColor = new Color(1f, 0.78f, 0.18f);
         GUI.Label(new Rect(Screen.width - 270f, 28f, 240f, 38f), $"◆ {economy.Money:N0} CREDITS", balance);
 
-        string[] categories = { "MODES", "CLASSES", "WEAPONS", "PERKS", "STARTING LOOT" };
-        float tabWidth = 145f;
+        string[] categories = { "MODES", "CLASSES", "WEAPONS", "PERKS", "STARTING LOOT", "CRATES" };
+        float tabWidth = 132f;
         float tabStart = (Screen.width - tabWidth * categories.Length) * 0.5f;
         for (int i = 0; i < categories.Length; i++)
         {
@@ -489,7 +514,8 @@ public sealed class GameMenu : MonoBehaviour
         else if (shopCategory == 1) DrawClassShop(economy);
         else if (shopCategory == 2) DrawWeaponShop(economy);
         else if (shopCategory == 3) DrawPerkShop(economy);
-        else DrawLootShop(economy);
+        else if (shopCategory == 4) DrawLootShop(economy);
+        else DrawCrateShop(economy);
         if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) shopOpen = false;
     }
 
@@ -598,6 +624,39 @@ public sealed class GameMenu : MonoBehaviour
             DrawStoreCard(card, EconomyManager.LootNames[i], EconomyManager.LootDescriptions[i], owned, EconomyManager.LootPrices[i]);
             if (!owned && GUI.Button(new Rect(card.x + 16f, card.y + 136f, card.width - 32f, 38f), $"BUY  ◆ {EconomyManager.LootPrices[i]}")) economy.BuyLoot(i);
         }
+    }
+
+    private static void DrawCrateShop(EconomyManager economy)
+    {
+        GUIStyle info = CenteredStyle(14);
+        info.normal.textColor = new Color(0.3f, 0.82f, 1f);
+        GUI.Label(new Rect(0f, 176f, Screen.width, 28f), "OPEN CRATES FOR WEAPONS, SKINS, CREDITS, XP, AND 2× XP BOOSTERS", info);
+        float width = Mathf.Min(270f, (Screen.width - 80f) / 3f);
+        float start = (Screen.width - width * EconomyManager.CrateNames.Length) * 0.5f;
+        Color[] colors = { new Color(0.18f, 0.5f, 0.3f), new Color(0.18f, 0.55f, 0.9f), new Color(0.8f, 0.42f, 0.08f) };
+        for (int i = 0; i < EconomyManager.CrateNames.Length; i++)
+        {
+            Rect card = new Rect(start + i * width, 225f, width - 16f, 245f);
+            GUI.color = new Color(0.035f, 0.055f, 0.075f, 0.98f);
+            GUI.DrawTexture(card, Texture2D.whiteTexture);
+            GUI.color = colors[i];
+            GUI.DrawTexture(new Rect(card.x, card.y, card.width, 6f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUIStyle name = CenteredStyle(20);
+            name.fontStyle = FontStyle.Bold;
+            name.normal.textColor = colors[i];
+            GUI.Label(new Rect(card.x + 12f, card.y + 28f, card.width - 24f, 34f), EconomyManager.CrateNames[i], name);
+            GUIStyle detail = CenteredStyle(13);
+            detail.wordWrap = true;
+            detail.normal.textColor = new Color(0.72f, 0.8f, 0.86f);
+            GUI.Label(new Rect(card.x + 22f, card.y + 78f, card.width - 44f, 58f), EconomyManager.CrateDescriptions[i], detail);
+            GUI.Label(new Rect(card.x, card.y + 145f, card.width, 30f), $"◆ {EconomyManager.CratePrices[i]:N0}", CenteredStyle(17));
+            GUI.backgroundColor = colors[i];
+            if (GUI.Button(new Rect(card.x + 24f, card.y + 188f, card.width - 48f, 40f), "OPEN CRATE"))
+                economy.OpenCrate(i);
+            GUI.backgroundColor = Color.white;
+        }
+        GUI.Label(new Rect(0f, 500f, Screen.width, 26f), $"COLLECTED SKINS  {economy.OwnedSkinCount} / 6    •    2× XP BOOST  {economy.XpBoostMatches} MATCHES", CenteredStyle(14));
     }
 
     private void DrawMatchReport()
