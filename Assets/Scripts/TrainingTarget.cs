@@ -2,7 +2,7 @@ using UnityEngine;
 
 public sealed class TrainingTarget : MonoBehaviour, IDamageable
 {
-    public enum EnemyArchetype { Normal, Handgun, Rifle, Sniper, Knife, Demolition, Tank }
+    public enum EnemyArchetype { Normal, Handgun, Rifle, Sniper, Knife, Demolition, Tank, Engineer, Medic, Pyro, Scout, Officer }
     [SerializeField] private bool followsPlayer;
     [SerializeField, Min(1f)] private float maximumHealth = 60f;
     [SerializeField, Min(0f)] private float moveSpeed = 2.3f;
@@ -42,6 +42,10 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private bool destroyAfterDefeat;
     private DestructibleObjective attackObjective;
     private float verticalVelocity;
+    private float nextAbilityTime;
+    private float officerBuffUntil;
+    private EnemyTurret engineerTurret;
+    public float HealthRatio => maximumHealth <= 0f ? 0f : health / maximumHealth;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -65,20 +69,27 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         destroyAfterDefeat = true;
         archetype = enemyType;
         usesRangedWeapon = enemyType == EnemyArchetype.Handgun || enemyType == EnemyArchetype.Rifle
-            || enemyType == EnemyArchetype.Sniper || enemyType == EnemyArchetype.Demolition || enemyType == EnemyArchetype.Tank;
-        usesRifle = enemyType == EnemyArchetype.Rifle || enemyType == EnemyArchetype.Tank;
+            || enemyType == EnemyArchetype.Sniper || enemyType == EnemyArchetype.Demolition || enemyType == EnemyArchetype.Tank
+            || enemyType == EnemyArchetype.Engineer || enemyType == EnemyArchetype.Medic || enemyType == EnemyArchetype.Pyro || enemyType == EnemyArchetype.Officer || enemyType == EnemyArchetype.Scout;
+        usesRifle = enemyType == EnemyArchetype.Rifle || enemyType == EnemyArchetype.Tank || enemyType == EnemyArchetype.Officer;
         attackInterval = enemyType == EnemyArchetype.Sniper ? 2.5f
             : enemyType == EnemyArchetype.Demolition ? 1.7f
             : enemyType == EnemyArchetype.Tank ? 0.16f
             : enemyType == EnemyArchetype.Rifle ? 0.32f
             : enemyType == EnemyArchetype.Handgun ? 0.85f
             : enemyType == EnemyArchetype.Knife ? 0.55f
+            : enemyType == EnemyArchetype.Pyro ? 0.16f
+            : enemyType == EnemyArchetype.Scout ? 0.42f
+            : enemyType == EnemyArchetype.Officer ? 0.7f
             : 1f;
         maximumWeaponAmmo = enemyType == EnemyArchetype.Handgun ? 12
             : enemyType == EnemyArchetype.Rifle ? 30
             : enemyType == EnemyArchetype.Sniper ? 1
             : enemyType == EnemyArchetype.Demolition ? 6
             : enemyType == EnemyArchetype.Tank ? 100
+            : enemyType == EnemyArchetype.Engineer || enemyType == EnemyArchetype.Medic || enemyType == EnemyArchetype.Officer ? 20
+            : enemyType == EnemyArchetype.Pyro ? 80
+            : enemyType == EnemyArchetype.Scout ? 2
             : 0;
         weaponAmmo = maximumWeaponAmmo;
     }
@@ -123,6 +134,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         }
         if (Time.time < stunnedUntil) return;
 
+        UpdateSupportAbility();
+
         if (!followsPlayer || player == null)
             return;
 
@@ -137,6 +150,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         float desiredRange = archetype == EnemyArchetype.Sniper ? 30f
             : archetype == EnemyArchetype.Demolition ? 18f
             : archetype == EnemyArchetype.Tank ? 16f
+            : archetype == EnemyArchetype.Pyro ? 6f
+            : archetype == EnemyArchetype.Scout ? 6f
+            : archetype == EnemyArchetype.Officer ? 13f
             : usesRangedWeapon ? (usesRifle ? 14f : 10f)
             : archetype == EnemyArchetype.Knife ? 1.7f : 1.35f;
         if (distance > desiredRange)
@@ -177,7 +193,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
                 else if (attackObjective != null && !attackObjective.IsDestroyed)
                     attackObjective.TakeDamage(attackDamage);
                 else
-                    player.TakeDamage(attackDamage, transform.position);
+                    player.TakeDamage(attackDamage * (Time.time < officerBuffUntil ? 1.25f : 1f), transform.position);
                 if (usesRangedWeapon && archetype != EnemyArchetype.Demolition) DrawEnemyTracer(attackTarget.position + Vector3.up);
                 if (usesRangedWeapon) weaponAmmo--;
             }
@@ -215,7 +231,43 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             verticalVelocity = 6.2f;
 
         verticalVelocity += Physics.gravity.y * Time.deltaTime;
-        controller.Move((direction * moveSpeed + Vector3.up * verticalVelocity) * Time.deltaTime);
+        float buffedSpeed = moveSpeed * (Time.time < officerBuffUntil ? 1.2f : 1f);
+        controller.Move((direction * buffedSpeed + Vector3.up * verticalVelocity) * Time.deltaTime);
+    }
+
+    private void UpdateSupportAbility()
+    {
+        if (Time.time < nextAbilityTime) return;
+        if (archetype == EnemyArchetype.Medic)
+        {
+            nextAbilityTime = Time.time + 1.2f;
+            TrainingTarget best = null;
+            float lowest = 1f;
+            foreach (TrainingTarget ally in FindObjectsByType<TrainingTarget>())
+                if (ally != this && ally.IsHostile && ally.IsAlive && Vector3.Distance(transform.position, ally.transform.position) < 12f && ally.HealthRatio < lowest)
+                { best = ally; lowest = ally.HealthRatio; }
+            best?.Heal(18f);
+        }
+        else if (archetype == EnemyArchetype.Officer)
+        {
+            nextAbilityTime = Time.time + 0.6f;
+            foreach (TrainingTarget ally in FindObjectsByType<TrainingTarget>())
+                if (ally.IsHostile && ally.IsAlive && Vector3.Distance(transform.position, ally.transform.position) < 14f)
+                    ally.officerBuffUntil = Time.time + 1f;
+        }
+        else if (archetype == EnemyArchetype.Engineer && engineerTurret == null)
+        {
+            nextAbilityTime = Time.time + 14f;
+            GameObject turret = new GameObject("Enemy Engineer Turret");
+            turret.transform.position = transform.position + transform.right * 1.5f;
+            engineerTurret = turret.AddComponent<EnemyTurret>();
+            engineerTurret.Configure(transform);
+        }
+    }
+
+    public void Heal(float amount)
+    {
+        if (!dead) health = Mathf.Min(maximumHealth, health + Mathf.Max(0f, amount));
     }
 
     private bool HasBlockingObstacle(Vector3 origin, Vector3 direction, float distance)
@@ -301,11 +353,11 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         GameObject tracer = new GameObject("Enemy Bullet Tracer");
         LineRenderer line = tracer.AddComponent<LineRenderer>();
         line.positionCount = 2;
-        line.startWidth = archetype == EnemyArchetype.Tank ? 0.035f : 0.018f;
-        line.endWidth = 0.004f;
+        line.startWidth = archetype == EnemyArchetype.Pyro ? 0.16f : archetype == EnemyArchetype.Tank ? 0.035f : 0.018f;
+        line.endWidth = archetype == EnemyArchetype.Pyro ? 0.05f : 0.004f;
         line.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        line.startColor = new Color(0.35f, 1f, 0.3f, 0.9f);
-        line.endColor = new Color(1f, 0.7f, 0.15f, 0.1f);
+        line.startColor = archetype == EnemyArchetype.Pyro ? new Color(1f, 0.15f, 0.01f, 0.95f) : new Color(0.35f, 1f, 0.3f, 0.9f);
+        line.endColor = archetype == EnemyArchetype.Pyro ? new Color(1f, 0.75f, 0.05f, 0.15f) : new Color(1f, 0.7f, 0.15f, 0.1f);
         line.SetPosition(0, transform.position + Vector3.up * 1.35f + transform.forward * 0.6f);
         line.SetPosition(1, targetPoint);
         Destroy(tracer, 0.08f);

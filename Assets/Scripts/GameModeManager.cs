@@ -98,6 +98,7 @@ public sealed class GameModeManager : MonoBehaviour
     public void RecordShot(bool hit) { shotsFired++; if (hit) shotsHit++; }
     public void RecordDamage(float amount) => damageDone += Mathf.Max(0f, amount);
     public void RecordHealthLost(float amount) => healthLost += Mathf.Max(0f, amount);
+    public void ClearReport() => LastReport = string.Empty;
 
     private void BuildReport(string outcome, float payoutMultiplier)
     {

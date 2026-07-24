@@ -63,6 +63,11 @@ public sealed class WaveManager : MonoBehaviour
         if (wave >= 7) Spawn(TrainingTarget.EnemyArchetype.Knife, 2 + wave / 5);
         if (wave >= 8) Spawn(TrainingTarget.EnemyArchetype.Demolition, 1 + (wave - 8) / 4);
         if (wave >= 9) Spawn(TrainingTarget.EnemyArchetype.Tank, 1 + (wave - 9) / 6);
+        if (wave >= 4 && wave % 3 == 1) Spawn(TrainingTarget.EnemyArchetype.Medic, 1);
+        if (wave >= 5 && wave % 4 == 1) Spawn(TrainingTarget.EnemyArchetype.Engineer, 1);
+        if (wave >= 6) Spawn(TrainingTarget.EnemyArchetype.Pyro, 1 + wave / 8);
+        if (wave >= 7) Spawn(TrainingTarget.EnemyArchetype.Scout, 1 + wave / 7);
+        if (wave >= 8 && wave % 3 == 2) Spawn(TrainingTarget.EnemyArchetype.Officer, 1);
     }
 
     private void Spawn(TrainingTarget.EnemyArchetype type, int count)
@@ -100,6 +105,11 @@ public sealed class WaveManager : MonoBehaviour
             : type == TrainingTarget.EnemyArchetype.Demolition ? new Color(0.68f, 0.12f, 0.82f)
             : type == TrainingTarget.EnemyArchetype.Tank ? new Color(0.35f, 0.68f, 0.08f)
             : type == TrainingTarget.EnemyArchetype.Sniper ? new Color(0.05f, 0.55f, 0.8f)
+            : type == TrainingTarget.EnemyArchetype.Medic ? new Color(0.9f, 0.9f, 0.92f)
+            : type == TrainingTarget.EnemyArchetype.Engineer ? new Color(0.9f, 0.55f, 0.08f)
+            : type == TrainingTarget.EnemyArchetype.Pyro ? new Color(0.95f, 0.18f, 0.02f)
+            : type == TrainingTarget.EnemyArchetype.Scout ? new Color(0.1f, 0.8f, 0.9f)
+            : type == TrainingTarget.EnemyArchetype.Officer ? new Color(0.55f, 0.12f, 0.72f)
             : new Color(0.08f, 0.68f, 0.2f);
         if (EconomyManager.Instance != null)
             uniformColor = Color.Lerp(uniformColor, EconomyManager.Instance.ActiveEnemySkinColor, 0.72f);
@@ -115,6 +125,9 @@ public sealed class WaveManager : MonoBehaviour
         {
             string weaponName = type == TrainingTarget.EnemyArchetype.Knife ? "Knife" : type == TrainingTarget.EnemyArchetype.Sniper ? "Sniper Rifle"
                 : type == TrainingTarget.EnemyArchetype.Demolition ? "Grenade Launcher" : type == TrainingTarget.EnemyArchetype.Tank ? "Minigun"
+                : type == TrainingTarget.EnemyArchetype.Engineer ? "Builder Tool" : type == TrainingTarget.EnemyArchetype.Medic ? "Med Rifle"
+                : type == TrainingTarget.EnemyArchetype.Pyro ? "Flamethrower" : type == TrainingTarget.EnemyArchetype.Scout ? "Scattergun"
+                : type == TrainingTarget.EnemyArchetype.Officer ? "Officer Rifle"
                 : type == TrainingTarget.EnemyArchetype.Rifle ? "Rifle" : "Handgun";
             Vector3 weaponScale = type == TrainingTarget.EnemyArchetype.Knife ? new Vector3(0.06f, 0.06f, 0.5f)
                 : type == TrainingTarget.EnemyArchetype.Handgun ? new Vector3(0.12f, 0.14f, 0.42f)
@@ -123,9 +136,9 @@ public sealed class WaveManager : MonoBehaviour
             AddPart(root.transform, weaponName, PrimitiveType.Cube, new Vector3(0.28f, 1.28f * scale, 0.48f), weaponScale, gear);
         }
 
-        float health = type == TrainingTarget.EnemyArchetype.Tank ? 320f : type == TrainingTarget.EnemyArchetype.Sniper ? 90f : type == TrainingTarget.EnemyArchetype.Demolition ? 135f : type == TrainingTarget.EnemyArchetype.Knife ? 75f : 85f;
-        float speed = type == TrainingTarget.EnemyArchetype.Tank ? 1.05f : type == TrainingTarget.EnemyArchetype.Knife ? 4.1f : type == TrainingTarget.EnemyArchetype.Sniper ? 1.35f : 2.35f;
-        float damage = type == TrainingTarget.EnemyArchetype.Sniper ? 32f : type == TrainingTarget.EnemyArchetype.Demolition ? 20f : type == TrainingTarget.EnemyArchetype.Tank ? 4f : type == TrainingTarget.EnemyArchetype.Knife ? 14f : type == TrainingTarget.EnemyArchetype.Handgun ? 9f : 6f;
+        float health = type == TrainingTarget.EnemyArchetype.Tank ? 320f : type == TrainingTarget.EnemyArchetype.Sniper ? 90f : type == TrainingTarget.EnemyArchetype.Demolition ? 135f : type == TrainingTarget.EnemyArchetype.Engineer ? 125f : type == TrainingTarget.EnemyArchetype.Medic ? 105f : type == TrainingTarget.EnemyArchetype.Officer ? 145f : type == TrainingTarget.EnemyArchetype.Knife || type == TrainingTarget.EnemyArchetype.Scout ? 75f : 85f;
+        float speed = type == TrainingTarget.EnemyArchetype.Tank ? 1.05f : type == TrainingTarget.EnemyArchetype.Knife ? 4.1f : type == TrainingTarget.EnemyArchetype.Scout ? 4.8f : type == TrainingTarget.EnemyArchetype.Sniper ? 1.35f : 2.35f;
+        float damage = type == TrainingTarget.EnemyArchetype.Sniper ? 32f : type == TrainingTarget.EnemyArchetype.Demolition ? 20f : type == TrainingTarget.EnemyArchetype.Tank ? 4f : type == TrainingTarget.EnemyArchetype.Pyro ? 5f : type == TrainingTarget.EnemyArchetype.Scout ? 12f : type == TrainingTarget.EnemyArchetype.Officer ? 5f : type == TrainingTarget.EnemyArchetype.Knife ? 14f : type == TrainingTarget.EnemyArchetype.Handgun ? 9f : 6f;
         TrainingTarget target = root.AddComponent<TrainingTarget>();
         target.Configure(true, (health + (waveEnemy ? CurrentWave * (tank ? 10f : 3f) : 0f)) * healthMultiplier, speed, damage * damageMultiplier);
         target.ConfigureWave(waveEnemy ? this : null, type);

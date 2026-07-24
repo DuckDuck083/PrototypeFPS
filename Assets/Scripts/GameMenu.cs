@@ -16,6 +16,7 @@ public sealed class GameMenu : MonoBehaviour
     private bool settingsOpen;
     private bool inventoryOpen;
     private bool inventorySkinsOpen;
+    private bool openedFromHub;
     private bool pausedMatch;
     private bool reportOpen;
     private bool confirmQuitMatch;
@@ -43,7 +44,7 @@ public sealed class GameMenu : MonoBehaviour
         movement = GetComponent<FirstPersonController>();
         weapons = GetComponent<SimpleRifle>();
         vitals = GetComponent<PlayerVitals>();
-        OpenMenu();
+        ReturnToHub();
     }
 
     private void Update()
@@ -57,7 +58,7 @@ public sealed class GameMenu : MonoBehaviour
             reportOpen = true;
             return;
         }
-        if (!menuOpen && Keyboard.current.pKey.wasPressedThisFrame)
+        if (!menuOpen && manager != null && manager.MatchRunning && Keyboard.current.pKey.wasPressedThisFrame)
         {
             pausedMatch = true;
             OpenMenu();
@@ -75,6 +76,7 @@ public sealed class GameMenu : MonoBehaviour
     private void OpenMenu()
     {
         menuOpen = true;
+        openedFromHub = false;
         loadoutOpen = false;
         playModeOpen = false;
         shopOpen = false;
@@ -96,11 +98,47 @@ public sealed class GameMenu : MonoBehaviour
         Cursor.visible = true;
     }
 
+    public bool IsMenuOpen => menuOpen;
+
+    public void OpenHubPage(string page)
+    {
+        OpenMenu();
+        openedFromHub = true;
+        if (page == "PLAY") playModeOpen = true;
+        else if (page == "SHOP") shopOpen = true;
+        else if (page == "INVENTORY") inventoryOpen = true;
+        else if (page == "LOADOUT") loadoutOpen = true;
+        else if (page == "QUESTS") questsOpen = true;
+        else if (page == "SETTINGS") settingsOpen = true;
+    }
+
+    private void ReturnToHub()
+    {
+        GameModeManager manager = FindAnyObjectByType<GameModeManager>();
+        manager?.AbandonActiveMode();
+        manager?.ClearReport();
+        menuOpen = false;
+        openedFromHub = false;
+        Time.timeScale = 1f;
+        vitals.enabled = true;
+        movement.enabled = true;
+        weapons.enabled = true;
+        movement.RestoreControls();
+        CharacterController controller = GetComponent<CharacterController>();
+        if (controller != null)
+        {
+            controller.enabled = false;
+            transform.position = Vector3.zero;
+            controller.enabled = true;
+        }
+    }
+
     private void StartGame(GameModeManager.Mode mode)
     {
         GameModeManager manager = FindAnyObjectByType<GameModeManager>();
         if (manager == null) return;
         manager.StartMode(mode);
+        openedFromHub = false;
         pausedMatch = false;
         menuOpen = false;
         Time.timeScale = 1f;
@@ -149,6 +187,11 @@ public sealed class GameMenu : MonoBehaviour
         bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || inventoryOpen || reportOpen;
         if (!subPage)
         {
+            if (openedFromHub)
+            {
+                ReturnToHub();
+                return;
+            }
             float homeContentHeight = Mathf.Max(680f, Screen.height);
             homeScroll = GUI.BeginScrollView(
                 new Rect(0f, 115f, Screen.width, Screen.height - 115f),
@@ -695,7 +738,11 @@ public sealed class GameMenu : MonoBehaviour
         report.fontStyle = FontStyle.Bold;
         report.normal.textColor = new Color(0.82f, 0.9f, 0.96f);
         GUI.Label(new Rect(panel.x + 35f, panel.y + 28f, panel.width - 70f, 285f), manager == null ? "NO REPORT AVAILABLE" : manager.LastReport, report);
-        if (GUI.Button(new Rect(panel.x + 170f, panel.y + 325f, 240f, 44f), "RETURN TO COMMAND")) reportOpen = false;
+        if (GUI.Button(new Rect(panel.x + 170f, panel.y + 325f, 240f, 44f), "RETURN TO BASE"))
+        {
+            reportOpen = false;
+            openedFromHub = true;
+        }
     }
 
     private static void DrawStoreCard(Rect card, string title, string description, bool owned, int price)
