@@ -231,7 +231,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             lastProgressTime = Time.time;
             return;
         }
-        if (waveManager == null || Time.time < lastProgressTime + 6f) return;
+        if (Time.time < lastProgressTime + 6f) return;
         Vector3 recovery = player.transform.position + Vector3.forward * 17f;
         for (int attempt = 0; attempt < 10; attempt++)
         {

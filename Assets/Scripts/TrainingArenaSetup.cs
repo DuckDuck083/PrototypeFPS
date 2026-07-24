@@ -115,8 +115,10 @@ public sealed class TrainingArenaSetup : MonoBehaviour
             if (i % 3 == 0) CreateBlock($"Stacked Crate {i}", cratePositions[i] + Vector3.up * 1.5f, new Vector3(1.5f, 1.5f, 1.5f), army);
         }
 
-        CreateBlock("Checkpoint Barrier Left", new Vector3(-8f, 0.75f, 47f), new Vector3(13f, 1.2f, 0.5f), warning);
-        CreateBlock("Checkpoint Barrier Right", new Vector3(8f, 0.75f, 47f), new Vector3(13f, 1.2f, 0.5f), warning);
+        // Leave a wide lane through the checkpoint so groups can pass without
+        // their CharacterControllers forming a traffic jam in the old narrow gap.
+        CreateBlock("Checkpoint Barrier Left", new Vector3(-11f, 0.75f, 47f), new Vector3(10f, 1.2f, 0.5f), warning);
+        CreateBlock("Checkpoint Barrier Right", new Vector3(11f, 0.75f, 47f), new Vector3(10f, 1.2f, 0.5f), warning);
         CreateBlock("Armored Truck Body", new Vector3(22f, 1.25f, 34f), new Vector3(6f, 2.1f, 3.2f), army);
         CreateBlock("Armored Truck Cab", new Vector3(24.7f, 1.65f, 34f), new Vector3(2.2f, 2.8f, 3f), army);
         for (int i = -1; i <= 1; i += 2)
