@@ -54,7 +54,7 @@ public sealed class GameModeManager : MonoBehaviour
         enemiesKilled = shotsFired = shotsHit = 0;
         damageDone = healthLost = 0f;
         EconomyManager.Instance?.BeginMatch();
-        SetBoundaryWalls(type == Mode.Fortress);
+        SetBoundaryWalls(true);
         foreach (GameModeBase mode in GetComponents<GameModeBase>())
             if (mode.Type == type) ActiveMode = mode;
         ActiveMode?.Begin(this);

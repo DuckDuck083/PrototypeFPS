@@ -41,6 +41,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private Vector3 guardPost;
     private bool destroyAfterDefeat;
     private DestructibleObjective attackObjective;
+    private float verticalVelocity;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
     {
@@ -148,7 +149,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
                 {
                     Vector3 returnDirection = GetSteeringDirection(returnOffset.normalized);
                     transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(returnDirection), 8f * Time.deltaTime);
-                    controller.Move(returnDirection * moveSpeed * Time.deltaTime + Vector3.down * 2f * Time.deltaTime);
+                    MoveCharacter(returnDirection);
                 }
                 else if (offset.sqrMagnitude > 0.01f)
                     transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(offset.normalized), 5f * Time.deltaTime);
@@ -156,7 +157,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             }
             Vector3 direction = GetSteeringDirection(offset.normalized);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), 8f * Time.deltaTime);
-            controller.Move(direction * moveSpeed * Time.deltaTime + Vector3.down * 2f * Time.deltaTime);
+            MoveCharacter(direction);
             RecoverIfStuck();
         }
         else if (Time.time >= nextAttackTime)
@@ -182,6 +183,34 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             }
             nextAttackTime = Time.time + attackInterval;
         }
+    }
+
+    private void MoveCharacter(Vector3 direction)
+    {
+        if (controller.isGrounded && verticalVelocity < 0f)
+            verticalVelocity = -2f;
+
+        Vector3 lowOrigin = transform.position + Vector3.up * 0.45f;
+        Vector3 highOrigin = transform.position + Vector3.up * 1.45f;
+        bool lowBlocked = HasBlockingObstacle(lowOrigin, direction, 1.05f);
+        bool highBlocked = HasBlockingObstacle(highOrigin, direction, 1.05f);
+        if (controller.isGrounded && lowBlocked && !highBlocked)
+            verticalVelocity = 6.2f;
+
+        verticalVelocity += Physics.gravity.y * Time.deltaTime;
+        controller.Move((direction * moveSpeed + Vector3.up * verticalVelocity) * Time.deltaTime);
+    }
+
+    private bool HasBlockingObstacle(Vector3 origin, Vector3 direction, float distance)
+    {
+        RaycastHit[] hits = Physics.RaycastAll(origin, direction, distance, ~0, QueryTriggerInteraction.Ignore);
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider.transform.root != transform)
+                return true;
+        }
+
+        return false;
     }
 
     private Vector3 GetSteeringDirection(Vector3 desired)
