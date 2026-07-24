@@ -101,6 +101,8 @@ public sealed class WaveManager : MonoBehaviour
             : type == TrainingTarget.EnemyArchetype.Tank ? new Color(0.35f, 0.68f, 0.08f)
             : type == TrainingTarget.EnemyArchetype.Sniper ? new Color(0.05f, 0.55f, 0.8f)
             : new Color(0.08f, 0.68f, 0.2f);
+        if (EconomyManager.Instance != null)
+            uniformColor = Color.Lerp(uniformColor, EconomyManager.Instance.ActiveEnemySkinColor, 0.72f);
         Material uniform = MakeMaterial(uniformColor);
         Material gear = MakeMaterial(new Color(0.025f, 0.035f, 0.03f));
         float scale = tank ? 1.25f : 1f;

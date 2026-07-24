@@ -27,6 +27,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
             : playerClass == SimpleRifle.PlayerClass.Tank ? 250f
             : playerClass == SimpleRifle.PlayerClass.Engineer ? 140f
             : playerClass == SimpleRifle.PlayerClass.Sniper ? 85f
+            : playerClass == SimpleRifle.PlayerClass.Scout ? 90f
             : playerClass == SimpleRifle.PlayerClass.Demoman ? 130f
             : playerClass == SimpleRifle.PlayerClass.Pirate ? 140f
             : 100f;
@@ -98,6 +99,8 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         SimpleRifle weapons = GetComponent<SimpleRifle>();
         if (weapons != null && weapons.IsShieldBlocking)
             amount *= 0.2f;
+        if (weapons != null)
+            amount *= weapons.DamageTakenMultiplier;
         amount *= 1f - Mathf.Clamp01(PerkDamageReduction);
 
         Health = Mathf.Max(0f, Health - amount);

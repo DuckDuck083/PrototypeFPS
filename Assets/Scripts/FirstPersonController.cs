@@ -36,6 +36,7 @@ public sealed class FirstPersonController : MonoBehaviour
     private float cameraPitch;
     private float standingCameraHeight;
     private bool isCrouching;
+    private int airJumpsRemaining;
     public float PerkSpeedMultiplier { get; set; } = 1f;
     public float MouseSensitivity { get => mouseSensitivity; set => mouseSensitivity = Mathf.Clamp(value, 0.03f, 0.4f); }
 
@@ -126,12 +127,19 @@ public sealed class FirstPersonController : MonoBehaviour
         float weaponMovementMultiplier = GetComponent<SimpleRifle>() != null ? GetComponent<SimpleRifle>().MovementMultiplier : 1f;
         float speed = (isCrouching ? crouchSpeed : isSprinting ? sprintSpeed : walkSpeed) * weaponMovementMultiplier * PerkSpeedMultiplier;
 
+        bool scout = GetComponent<SimpleRifle>()?.CurrentClass == SimpleRifle.PlayerClass.Scout;
         if (characterController.isGrounded && verticalVelocity < 0f)
+        {
             verticalVelocity = -2f;
+            airJumpsRemaining = scout ? 1 : 0;
+        }
 
         bool jumpPressed = jumpAction.WasPressedThisFrame() || (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame);
-        if (jumpPressed && characterController.isGrounded && !isCrouching)
+        if (jumpPressed && !isCrouching && (characterController.isGrounded || airJumpsRemaining > 0))
+        {
             verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            if (!characterController.isGrounded) airJumpsRemaining--;
+        }
 
         verticalVelocity += gravity * Time.deltaTime;
         Vector3 velocity = horizontalMovement * speed + Vector3.up * verticalVelocity;

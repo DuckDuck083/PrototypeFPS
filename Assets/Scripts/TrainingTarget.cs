@@ -170,19 +170,36 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             }
             if (!usesRangedWeapon || HasLineOfSight(attackTarget))
             {
-                if (aggroTurret != null)
+                if (archetype == EnemyArchetype.Demolition)
+                    LaunchBomb(attackTarget);
+                else if (aggroTurret != null)
                     aggroTurret.TakeDamage(attackDamage);
                 else if (attackObjective != null && !attackObjective.IsDestroyed)
                     attackObjective.TakeDamage(attackDamage);
-                else if (archetype == EnemyArchetype.Demolition)
-                    player.TakeExplosiveDamage(attackDamage, transform.position);
                 else
                     player.TakeDamage(attackDamage, transform.position);
-                if (usesRangedWeapon) DrawEnemyTracer(attackTarget.position + Vector3.up);
+                if (usesRangedWeapon && archetype != EnemyArchetype.Demolition) DrawEnemyTracer(attackTarget.position + Vector3.up);
                 if (usesRangedWeapon) weaponAmmo--;
             }
             nextAttackTime = Time.time + attackInterval;
         }
+    }
+
+    private void LaunchBomb(Transform target)
+    {
+        GameObject bomb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        bomb.name = "Enemy Demolition Bomb";
+        bomb.transform.position = transform.position + Vector3.up * 1.35f + transform.forward * 0.6f;
+        bomb.transform.localScale = Vector3.one * 0.34f;
+        bomb.GetComponent<Renderer>().material = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(1f, 0.16f, 0.02f) };
+        Rigidbody body = bomb.AddComponent<Rigidbody>();
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        Vector3 targetPoint = target.position + Vector3.up * 0.8f;
+        Vector3 flat = targetPoint - bomb.transform.position;
+        float distance = new Vector2(flat.x, flat.z).magnitude;
+        flat.y = 0f;
+        body.linearVelocity = flat.normalized * Mathf.Clamp(distance * 0.8f, 8f, 15f) + Vector3.up * Mathf.Clamp(4.5f + distance * 0.09f, 5f, 8f);
+        bomb.AddComponent<EnemyBombProjectile>().Configure(attackDamage, transform);
     }
 
     private void MoveCharacter(Vector3 direction)

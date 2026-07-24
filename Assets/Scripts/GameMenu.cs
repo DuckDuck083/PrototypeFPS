@@ -14,6 +14,8 @@ public sealed class GameMenu : MonoBehaviour
     private bool promoOpen;
     private bool adminOpen;
     private bool settingsOpen;
+    private bool inventoryOpen;
+    private bool inventorySkinsOpen;
     private bool pausedMatch;
     private bool reportOpen;
     private bool confirmQuitMatch;
@@ -24,6 +26,8 @@ public sealed class GameMenu : MonoBehaviour
     private string promoStatus = "Enter a code to redeem a special reward.";
     private Vector2 pageScroll;
     private int selectedLoadoutSlot = -1;
+    private int inventorySlot;
+    private int inventoryWeapon;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void EnsureMenuExists()
@@ -77,6 +81,8 @@ public sealed class GameMenu : MonoBehaviour
         promoOpen = false;
         adminOpen = false;
         settingsOpen = false;
+        inventoryOpen = false;
+        inventorySkinsOpen = false;
         reportOpen = false;
         confirmQuitMatch = false;
         confirmProgressReset = false;
@@ -131,7 +137,7 @@ public sealed class GameMenu : MonoBehaviour
 
         GUIStyle title = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 44, fontStyle = FontStyle.Bold };
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || reportOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || inventoryOpen || reportOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
 
         if (confirmQuitMatch)
         {
@@ -139,14 +145,14 @@ public sealed class GameMenu : MonoBehaviour
             return;
         }
 
-        bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || reportOpen;
+        bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || inventoryOpen || reportOpen;
         if (!subPage)
         {
             DrawMainMenu();
             return;
         }
 
-        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : loadoutOpen ? 640f : 610f;
+        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : inventoryOpen ? 760f : loadoutOpen ? 640f : 610f;
         Rect viewport = new Rect(0f, 0f, Screen.width, Screen.height);
         Rect content = new Rect(0f, 0f, Mathf.Max(760f, Screen.width - 18f), Mathf.Max(contentHeight, Screen.height));
         pageScroll = GUI.BeginScrollView(viewport, pageScroll, content, false, true);
@@ -157,6 +163,7 @@ public sealed class GameMenu : MonoBehaviour
         else if (promoOpen) DrawPromoCodes();
         else if (adminOpen) DrawAdminPanel();
         else if (settingsOpen) DrawSettings();
+        else if (inventoryOpen) DrawInventory();
         else if (reportOpen) DrawMatchReport();
         GUI.EndScrollView();
 
@@ -196,15 +203,16 @@ public sealed class GameMenu : MonoBehaviour
 
         float buttonWidth = Mathf.Min(330f, Screen.width * 0.36f);
         float buttonX = Screen.width - buttonWidth - 42f;
-        float buttonHeight = 58f;
-        float gap = 10f;
+        float buttonHeight = 50f;
+        float gap = 8f;
         DrawHomeTile(new Rect(buttonX, top, buttonWidth, buttonHeight), pausedMatch ? "RESUME" : "PLAY", pausedMatch ? "Return to match" : "Choose game mode", new Color(0.15f, 0.65f, 0.95f), () => { if (pausedMatch) ResumeMatch(); else { pageScroll = Vector2.zero; playModeOpen = true; } });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap), buttonWidth, buttonHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 2f, buttonWidth, buttonHeight), "BLACK MARKET", "Shop and crates", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 3f, buttonWidth, buttonHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 4f, buttonWidth, buttonHeight), "PROMO CODES", "Redeem rewards", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap), buttonWidth, buttonHeight), "INVENTORY", "Weapons and skins", new Color(0.25f, 0.82f, 0.72f), () => { pageScroll = Vector2.zero; inventoryOpen = true; inventorySkinsOpen = false; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 2f, buttonWidth, buttonHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 3f, buttonWidth, buttonHeight), "BLACK MARKET", "Shop and crates", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 4f, buttonWidth, buttonHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 5f, buttonWidth, buttonHeight), "PROMO CODES", "Redeem rewards", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
         bool dev = EconomyManager.Instance != null && EconomyManager.Instance.DevModeUnlocked;
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 5f, buttonWidth, buttonHeight), "SETTINGS", "Audio, controls and display", new Color(0.48f, 0.68f, 0.9f), () => { pageScroll = Vector2.zero; settingsOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 6f, buttonWidth, buttonHeight), "SETTINGS", "Audio, controls and display", new Color(0.48f, 0.68f, 0.9f), () => { pageScroll = Vector2.zero; settingsOpen = true; });
 
         if (dev)
         {
@@ -540,8 +548,8 @@ public sealed class GameMenu : MonoBehaviour
 
     private static void DrawClassShop(EconomyManager economy)
     {
-        string[] names = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE" };
-        string[] roles = { "Balanced fighter", "Heavy frontline", "Build and defend", "Long-range expert", "Explosives master", "Fast tactical agent", "Black-powder bruiser" };
+        string[] names = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE", "SCOUT" };
+        string[] roles = { "Balanced fighter", "Heavy frontline", "Build and defend", "Long-range expert", "Explosives master", "Fast tactical agent", "Black-powder bruiser", "Double-jump speed fighter" };
         float width = Mathf.Min(210f, (Screen.width - 36f) / 3f);
         int maxColumns = Screen.width < 760 ? 3 : 4;
         for (int i = 0; i < names.Length; i++)
@@ -636,7 +644,7 @@ public sealed class GameMenu : MonoBehaviour
         Color[] colors = { new Color(0.18f, 0.5f, 0.3f), new Color(0.18f, 0.55f, 0.9f), new Color(0.8f, 0.42f, 0.08f) };
         for (int i = 0; i < EconomyManager.CrateNames.Length; i++)
         {
-            Rect card = new Rect(start + i * width, 225f, width - 16f, 245f);
+            Rect card = new Rect(start + i * width, 225f, width - 16f, 285f);
             GUI.color = new Color(0.035f, 0.055f, 0.075f, 0.98f);
             GUI.DrawTexture(card, Texture2D.whiteTexture);
             GUI.color = colors[i];
@@ -650,13 +658,17 @@ public sealed class GameMenu : MonoBehaviour
             detail.wordWrap = true;
             detail.normal.textColor = new Color(0.72f, 0.8f, 0.86f);
             GUI.Label(new Rect(card.x + 22f, card.y + 78f, card.width - 44f, 58f), EconomyManager.CrateDescriptions[i], detail);
-            GUI.Label(new Rect(card.x, card.y + 145f, card.width, 30f), $"◆ {EconomyManager.CratePrices[i]:N0}", CenteredStyle(17));
+            GUIStyle odds = CenteredStyle(10);
+            odds.wordWrap = true;
+            odds.normal.textColor = new Color(0.68f, 0.76f, 0.82f);
+            GUI.Label(new Rect(card.x + 10f, card.y + 135f, card.width - 20f, 48f), EconomyManager.CrateOdds(i), odds);
+            GUI.Label(new Rect(card.x, card.y + 190f, card.width, 30f), $"◆ {EconomyManager.CratePrices[i]:N0}", CenteredStyle(17));
             GUI.backgroundColor = colors[i];
-            if (GUI.Button(new Rect(card.x + 24f, card.y + 188f, card.width - 48f, 40f), "OPEN CRATE"))
+            if (GUI.Button(new Rect(card.x + 24f, card.y + 232f, card.width - 48f, 40f), "OPEN CRATE"))
                 economy.OpenCrate(i);
             GUI.backgroundColor = Color.white;
         }
-        GUI.Label(new Rect(0f, 500f, Screen.width, 26f), $"COLLECTED SKINS  {economy.OwnedSkinCount} / 6    •    2× XP BOOST  {economy.XpBoostMatches} MATCHES", CenteredStyle(14));
+        GUI.Label(new Rect(0f, 535f, Screen.width, 26f), $"COLLECTED WEAPON SKINS  {economy.OwnedSkinCount} / 6    •    2× XP BOOST  {economy.XpBoostMatches} MATCHES", CenteredStyle(14));
     }
 
     private void DrawMatchReport()
@@ -742,9 +754,116 @@ public sealed class GameMenu : MonoBehaviour
         }
     }
 
+    private void DrawInventory()
+    {
+        EconomyManager economy = EconomyManager.Instance;
+        if (economy == null) return;
+        GUI.Label(new Rect(0f, 82f, Screen.width, 38f), inventorySkinsOpen ? "SKIN INVENTORY" : "WEAPON INVENTORY", CenteredStyle(27));
+        if (GUI.Button(new Rect(18f, 18f, 120f, 40f), inventorySkinsOpen ? "WEAPONS" : "BACK"))
+        {
+            if (inventorySkinsOpen) { inventorySkinsOpen = false; inventorySlot = Mathf.Max(0, inventorySlot); }
+            else inventoryOpen = false;
+        }
+
+        if (inventorySkinsOpen)
+        {
+            DrawInventorySkins(economy);
+            return;
+        }
+
+        string[] tabs = { "PRIMARY", "SECONDARY", "MELEE", "UTILITY" };
+        float tabWidth = 130f;
+        float tabStart = (Screen.width - tabWidth * 4f) * 0.5f;
+        for (int slot = 0; slot < 4; slot++)
+        {
+            GUI.backgroundColor = inventorySlot == slot ? new Color(0.15f, 0.65f, 0.9f) : new Color(0.12f, 0.18f, 0.22f);
+            if (GUI.Button(new Rect(tabStart + slot * tabWidth, 132f, tabWidth - 6f, 36f), tabs[slot])) inventorySlot = slot;
+        }
+        GUI.backgroundColor = Color.white;
+        if (GUI.Button(new Rect(Screen.width - 250f, 82f, 220f, 36f), "ENEMY SKINS"))
+        {
+            inventorySlot = -1;
+            inventorySkinsOpen = true;
+        }
+
+        int count = weapons.GetLoadoutOptionCount(inventorySlot);
+        float cardWidth = 205f;
+        int columns = Mathf.Max(3, Mathf.FloorToInt((Screen.width - 40f) / cardWidth));
+        float start = (Screen.width - Mathf.Min(columns, count) * cardWidth) * 0.5f;
+        string hovered = null;
+        for (int weapon = 0; weapon < count; weapon++)
+        {
+            if (!economy.IsWeaponUnlocked(inventorySlot, weapon)) continue;
+            int row = weapon / columns;
+            int column = weapon % columns;
+            Rect card = new Rect(start + column * cardWidth, 190f + row * 118f, cardWidth - 10f, 106f);
+            GUI.backgroundColor = inventoryWeapon == weapon ? new Color(0.15f, 0.58f, 0.78f) : new Color(0.1f, 0.16f, 0.2f);
+            if (GUI.Button(card, ""))
+            {
+                inventoryWeapon = weapon;
+                inventorySkinsOpen = true;
+            }
+            GUI.backgroundColor = Color.white;
+            GUI.Label(new Rect(card.x + 8f, card.y + 12f, card.width - 16f, 32f), weapons.GetLoadoutOptionName(inventorySlot, weapon), CenteredStyle(13));
+            GUI.Label(new Rect(card.x + 8f, card.y + 53f, card.width - 16f, 24f), $"SKIN: {economy.SkinName(economy.GetAppliedWeaponSkin(inventorySlot, weapon))}", CenteredStyle(10));
+            GUI.Label(new Rect(card.x + 8f, card.y + 79f, card.width - 16f, 20f), "SKINS", CenteredStyle(11));
+            if (card.Contains(Event.current.mousePosition)) hovered = weapons.GetWeaponStats(inventorySlot, weapon);
+        }
+        if (!string.IsNullOrEmpty(hovered)) DrawWeaponStatsTooltip(hovered);
+    }
+
+    private void DrawInventorySkins(EconomyManager economy)
+    {
+        if (inventorySlot < 0)
+        {
+            GUI.Label(new Rect(0f, 130f, Screen.width, 30f), "ENEMY APPEARANCE — APPLIES TO NEWLY SPAWNED ENEMIES", CenteredStyle(15));
+            float width = Mathf.Min(190f, (Screen.width - 36f) / economy.EnemySkinCount);
+            float start = (Screen.width - width * economy.EnemySkinCount) * 0.5f;
+            for (int skin = 0; skin < economy.EnemySkinCount; skin++)
+            {
+                bool owned = economy.IsEnemySkinUnlocked(skin);
+                GUI.enabled = owned;
+                GUI.backgroundColor = economy.GetEnemySkinColor(skin);
+                if (GUI.Button(new Rect(start + skin * width, 210f, width - 12f, 95f), owned ? economy.EnemySkinName(skin) : "LOCKED"))
+                    economy.ApplyEnemySkin(skin);
+                GUI.enabled = true;
+            }
+            GUI.backgroundColor = Color.white;
+            return;
+        }
+
+        string weaponName = weapons.GetLoadoutOptionName(inventorySlot, inventoryWeapon);
+        GUI.Label(new Rect(0f, 130f, Screen.width, 30f), $"{weaponName} — SELECT AN OWNED SKIN", CenteredStyle(16));
+        float skinWidth = Mathf.Min(180f, (Screen.width - 36f) / economy.SkinCount);
+        float skinStart = (Screen.width - skinWidth * economy.SkinCount) * 0.5f;
+        for (int skin = 0; skin < economy.SkinCount; skin++)
+        {
+            bool owned = economy.IsSkinUnlocked(skin);
+            bool active = economy.GetAppliedWeaponSkin(inventorySlot, inventoryWeapon) == skin;
+            GUI.enabled = owned;
+            GUI.backgroundColor = active ? new Color(0.2f, 0.85f, 0.4f) : economy.GetSkinColor(skin);
+            if (GUI.Button(new Rect(skinStart + skin * skinWidth, 210f, skinWidth - 12f, 95f), owned ? $"{economy.SkinName(skin)}\n{(active ? "APPLIED" : "APPLY")}" : "LOCKED"))
+                economy.ApplyWeaponSkin(inventorySlot, inventoryWeapon, skin);
+            GUI.enabled = true;
+        }
+        GUI.backgroundColor = Color.white;
+    }
+
+    private static void DrawWeaponStatsTooltip(string stats)
+    {
+        Vector2 mouse = Event.current.mousePosition;
+        Rect panel = new Rect(Mathf.Min(mouse.x + 18f, Screen.width - 292f), Mathf.Min(mouse.y + 18f, Screen.height - 142f), 275f, 125f);
+        GUI.color = new Color(0.015f, 0.03f, 0.045f, 0.98f);
+        GUI.DrawTexture(panel, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle style = new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Bold, wordWrap = true };
+        style.normal.textColor = new Color(0.78f, 0.9f, 1f);
+        GUI.Label(new Rect(panel.x + 12f, panel.y + 8f, panel.width - 24f, panel.height - 16f), stats, style);
+    }
+
     private void DrawClassSelector(float startX, float panelWidth, float y)
     {
-        string[] classNames = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE" };
+        string[] classNames = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE", "SCOUT" };
         float classWidth = panelWidth / classNames.Length;
         GUI.color = new Color(0.04f, 0.07f, 0.09f, 0.95f);
         GUI.DrawTexture(new Rect(startX - 8f, y, panelWidth + 16f, 76f), Texture2D.whiteTexture);
@@ -774,6 +893,7 @@ public sealed class GameMenu : MonoBehaviour
         string[] slotLabels = { "SLOT 1", "SLOT 2", "MELEE", "UTILITY" };
         float gap = 12f;
         float cardWidth = (panelWidth - gap * 3f) / 4f;
+        string hovered = null;
         for (int slot = 0; slot < 4; slot++)
         {
             Rect card = new Rect(startX + slot * (cardWidth + gap), 275f, cardWidth, 230f);
@@ -784,7 +904,10 @@ public sealed class GameMenu : MonoBehaviour
             DrawWeaponIcon(new Rect(card.x + 20f, card.y + 52f, card.width - 40f, 95f), slot, weapons.GetLoadoutSlotName(slot));
             GUI.Label(new Rect(card.x + 8f, card.y + 158f, card.width - 16f, 42f), weapons.GetLoadoutSlotName(slot), CenteredStyle(15));
             GUI.Label(new Rect(card.x + 8f, card.y + 204f, card.width - 16f, 20f), "CLICK TO CHANGE", CenteredStyle(11));
+            if (card.Contains(Event.current.mousePosition))
+                hovered = weapons.GetWeaponStats(slot, weapons.GetLoadoutSlotIndex(slot));
         }
+        if (!string.IsNullOrEmpty(hovered)) DrawWeaponStatsTooltip(hovered);
     }
 
     private void DrawWeaponPicker(float startX, float panelWidth, int slot)
@@ -796,6 +919,7 @@ public sealed class GameMenu : MonoBehaviour
         float cardWidth = Mathf.Min(250f, (panelWidth - gap * (count - 1)) / count);
         float totalWidth = cardWidth * count + gap * (count - 1);
         float x = (Screen.width - totalWidth) * 0.5f;
+        string hovered = null;
         for (int option = 0; option < count; option++)
         {
             int weapon = weapons.GetClassOptionIndex(slot, option);
@@ -819,7 +943,10 @@ public sealed class GameMenu : MonoBehaviour
                 GUI.Label(new Rect(card.x + 6f, card.y + 184f, card.width - 12f, 28f), description, CenteredStyle(10));
             if (selected) GUI.Label(new Rect(card.x, card.y + 211f, card.width, 20f), "EQUIPPED", CenteredStyle(12));
             else if (!unlocked) GUI.Label(new Rect(card.x, card.y + 211f, card.width, 20f), "BUY IN BLACK MARKET", CenteredStyle(11));
+            if (unlocked && card.Contains(Event.current.mousePosition))
+                hovered = weapons.GetWeaponStats(slot, weapon);
         }
+        if (!string.IsNullOrEmpty(hovered)) DrawWeaponStatsTooltip(hovered);
     }
 
     private static void DrawWeaponIcon(Rect rect, int slot, string weaponName)
