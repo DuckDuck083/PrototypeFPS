@@ -80,7 +80,7 @@ public sealed class EconomyManager : MonoBehaviour
     {
         for (int i = 0; i < ModePrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Mode.{i}", 1);
         for (int i = 0; i < ClassPrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Class.{i}", 1);
-        int[] weaponCounts = { 13, 11, 9, 9 };
+        int[] weaponCounts = { 15, 11, 9, 9 };
         for (int slot = 0; slot < weaponCounts.Length; slot++)
         for (int weapon = 0; weapon < weaponCounts[slot]; weapon++)
             PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}", 1);
@@ -100,7 +100,7 @@ public sealed class EconomyManager : MonoBehaviour
         PlayerPrefs.DeleteKey("PrototypeFPS.CurrentWave");
         for (int i = 0; i < ModePrices.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Mode.{i}");
         for (int i = 0; i < ClassPrices.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Class.{i}");
-        int[] weaponCounts = { 13, 11, 9, 9 };
+        int[] weaponCounts = { 15, 11, 9, 9 };
         for (int slot = 0; slot < weaponCounts.Length; slot++)
         for (int weapon = 0; weapon < weaponCounts[slot]; weapon++)
             PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}");

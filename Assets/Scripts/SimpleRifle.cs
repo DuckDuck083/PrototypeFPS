@@ -51,7 +51,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private int currentSlot;
     private static readonly string[][] SlotWeaponNames =
     {
-        new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER", "SNIPER RIFLE", "BURST RIFLE", "HEAVY CANNON", "ARC SHOOTER", "INCENDIARY LAUNCHER", "SMG", "BOLT-ACTION RIFLE" },
+        new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER", "SNIPER RIFLE", "BURST RIFLE", "HEAVY CANNON", "ARC SHOOTER", "INCENDIARY LAUNCHER", "SMG", "BOLT-ACTION RIFLE", "LASER RIFLE", "BOW AND ARROW" },
         new[] { "RIOT SHIELD", "HANDGUN", "REVOLVER", "MEDPACK", "SHOTGUN", "TURRET BUILDER", "STICKYBOMB LAUNCHER", "MACHINE PISTOL", "LMG", "POISON DART", "FLINTLOCK" },
         new[] { "BATON", "FISTS", "KNIFE", "SCYTHE", "AXE", "WRENCH", "MACHETE", "HEALING KATANA", "PIRATE SWORD" },
         new[] { "SNIPER RIFLE", "FRAG GRENADE", "SMOKE GRENADE", "PROXIMITY MINE", "VAMP PISTOL", "FLASHBANG", "BARRIER", "FIRE BOMB", "PIRATE CANNON" }
@@ -220,8 +220,8 @@ public sealed class SimpleRifle : MonoBehaviour
         slotSelections[slotIndex] = weaponIndex;
         if (slotIndex == 0)
         {
-            int[] magazines = { 30, 4, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5 };
-            int[] reserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25 };
+            int[] magazines = { 30, 4, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5, 24, 1 };
+            int[] reserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25, 120, 30 };
             rifleMagazineSize = magazines[weaponIndex];
             rifleAmmo = rifleMagazineSize;
             rifleReserveAmmo = reserves[weaponIndex];
@@ -271,14 +271,22 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public int GetLoadoutOptionCount(int slotIndex) => slotIndex >= 0 && slotIndex < 4 ? SlotWeaponNames[slotIndex].Length : 0;
 
+    public string GetLoadoutOptionDescription(int slotIndex, int optionIndex)
+    {
+        if (slotIndex == 0 && optionIndex == 6) return "Charged shots pierce up to 3 enemies.";
+        if (slotIndex == 0 && optionIndex == 13) return "42 damage • pinpoint beam • no range falloff";
+        if (slotIndex == 0 && optionIndex == 14) return "115 damage • silent • 3× headshots";
+        return string.Empty;
+    }
+
     private static readonly int[][][] ClassLoadouts =
     {
-        new[] { new[] { 1, 0, 7, 10 }, new[] { 1, 4, 7 }, new[] { 0, 3, 6 }, new[] { 1 } },
+        new[] { new[] { 1, 0, 7, 10, 13, 14 }, new[] { 1, 4, 7 }, new[] { 0, 3, 6 }, new[] { 1 } },
         new[] { new[] { 3, 8 }, new[] { 0, 8 }, new[] { 1, 4, 3 }, new[] { 2, 3 } },
         new[] { new[] { 2, 7, 9 }, new[] { 5, 7 }, new[] { 5, 3 }, new[] { 3, 6 } },
-        new[] { new[] { 6 }, new[] { 2, 7 }, new[] { 2, 3, 6 }, new[] { 4 } },
+        new[] { new[] { 6, 14 }, new[] { 2, 7 }, new[] { 2, 3, 6 }, new[] { 4 } },
         new[] { new[] { 4 }, new[] { 6 }, new[] { 0, 3, 6 }, new[] { 3, 5 } },
-        new[] { new[] { 11 }, new[] { 9 }, new[] { 7, 3 }, new[] { 7 } },
+        new[] { new[] { 11, 13 }, new[] { 9 }, new[] { 7, 3 }, new[] { 7 } },
         new[] { new[] { 12 }, new[] { 10 }, new[] { 8, 3 }, new[] { 8 } }
     };
 
@@ -332,7 +340,7 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         else if (slotIndex == 0)
         {
-            float length = option == 1 ? 1.15f : option == 2 ? 0.62f : option == 3 ? 0.9f : 0.72f;
+            float length = option == 1 ? 1.15f : option == 2 ? 0.62f : option == 3 ? 0.9f : option == 14 ? 1.05f : 0.72f;
             float width = option == 1 ? 0.24f : option == 3 ? 0.2f : 0.15f;
             AddPart(model, SlotWeaponNames[0][option], new Vector3(0f, 0f, 0.3f), new Vector3(width, width, length), metal);
             AddPart(model, "Barrel", new Vector3(0f, 0.02f, 0.3f + length * 0.55f), new Vector3(width * 0.35f, width * 0.35f, length * 0.45f), dark);
@@ -391,6 +399,18 @@ public sealed class SimpleRifle : MonoBehaviour
         {
             AddPart(model, "Wood Stock", new Vector3(0f, -0.03f, -0.24f), new Vector3(0.2f, 0.2f, 0.55f), wood);
             AddPart(model, "Bolt Handle", new Vector3(0.16f, 0.04f, 0.32f), new Vector3(0.24f, 0.06f, 0.06f), metal);
+        }
+        else if (slot == 0 && option == 13)
+        {
+            AddPart(model, "Energy Cell", new Vector3(0f, -0.16f, 0.2f), new Vector3(0.2f, 0.28f, 0.25f), electric);
+            AddPart(model, "Laser Emitter", new Vector3(0f, 0.02f, 0.88f), new Vector3(0.18f, 0.18f, 0.42f), electric);
+            AddPart(model, "Cooling Fins", new Vector3(0f, 0.14f, 0.35f), new Vector3(0.34f, 0.08f, 0.42f), dark);
+        }
+        else if (slot == 0 && option == 14)
+        {
+            AddPart(model, "Bow Upper Limb", new Vector3(0f, 0.38f, 0.35f), new Vector3(0.08f, 0.7f, 0.08f), wood, -18f);
+            AddPart(model, "Bow Lower Limb", new Vector3(0f, -0.28f, 0.35f), new Vector3(0.08f, 0.7f, 0.08f), wood, 18f);
+            AddPart(model, "Nocked Arrow", new Vector3(0f, 0f, 0.55f), new Vector3(0.035f, 0.035f, 1.15f), metal);
         }
         else if (slot == 1 && option == 8)
         {
@@ -475,7 +495,7 @@ public sealed class SimpleRifle : MonoBehaviour
             AddPart(model, "Burst Optic", new Vector3(0f, 0.14f, 0.38f), new Vector3(0.12f, 0.11f, 0.28f), dark);
             AddPart(model, "Muzzle Brake", new Vector3(0f, 0f, 0.92f), new Vector3(0.2f, 0.16f, 0.16f), metal);
         }
-        else if (slot == 0)
+        else if (slot == 0 && option < 13)
         {
             AddPart(model, "Cannon Receiver", new Vector3(0f, 0f, 0.32f), new Vector3(0.34f, 0.3f, 0.7f), metal);
             AddPart(model, "Cannon Barrel", new Vector3(0f, 0f, 0.95f), new Vector3(0.2f, 0.2f, 0.75f), dark);
@@ -570,6 +590,8 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 10 && attackAction.WasPressedThisFrame()) LaunchIncendiary(true);
             else if (option == 11 && attackAction.IsPressed()) FireHitscan(16f, 0.085f, 1, IsAiming ? 0.006f : 0.02f, false);
             else if (option == 12 && attackAction.WasPressedThisFrame()) FireHitscan(72f, 1.15f, 1, IsAiming ? 0.002f : 0.012f, true);
+            else if (option == 13 && attackAction.IsPressed()) FireLaserRifle();
+            else if (option == 14 && attackAction.WasPressedThisFrame()) FireBow();
         }
         else if (currentSlot == 1)
         {
@@ -655,6 +677,50 @@ public sealed class SimpleRifle : MonoBehaviour
     private static float GetDamageFalloff(float distance)
     {
         return Mathf.Lerp(1f, MinimumFalloffMultiplier, Mathf.InverseLerp(FalloffStart, FalloffEnd, distance));
+    }
+
+    private void FireLaserRifle()
+    {
+        if (CurrentAmmo <= 0) { TryReload(); return; }
+        SetCurrentAmmo(CurrentAmmo - 1);
+        nextShotTime = Time.time + 0.14f;
+        Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
+        Vector3 end = ray.GetPoint(range);
+        bool hitEnemy = false;
+        if (Physics.Raycast(ray, out RaycastHit hit, range, ~0, QueryTriggerInteraction.Ignore))
+        {
+            end = hit.point;
+            hitEnemy = hit.collider.GetComponentInParent<TrainingTarget>() != null;
+            ApplyDamage(hit, 42f, true, 0f, true);
+            CreateBulletHole(hit.point, hit.normal, hit.transform);
+        }
+        CreateColoredTracer(end, new Color(0.05f, 1f, 1f), 0.032f, 0.1f);
+        FindAnyObjectByType<GameModeManager>()?.RecordShot(hitEnemy);
+        gunshotAudio.pitch = Random.Range(1.35f, 1.5f);
+        gunshotAudio.PlayOneShot(gunshotClip, 0.38f);
+        ApplyRecoil(0.65f, 0.12f);
+        if (CurrentAmmo == 0) TryReload();
+    }
+
+    private void FireBow()
+    {
+        if (CurrentAmmo <= 0) { TryReload(); return; }
+        SetCurrentAmmo(CurrentAmmo - 1);
+        nextShotTime = Time.time + 0.9f;
+        Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
+        Vector3 end = ray.GetPoint(range);
+        bool hitEnemy = false;
+        if (Physics.Raycast(ray, out RaycastHit hit, range, ~0, QueryTriggerInteraction.Ignore))
+        {
+            end = hit.point;
+            hitEnemy = hit.collider.GetComponentInParent<TrainingTarget>() != null;
+            ApplyDamage(hit, 115f, true, 0f, true);
+            CreateBulletHole(hit.point, hit.normal, hit.transform);
+        }
+        CreateColoredTracer(end, new Color(0.72f, 0.42f, 0.12f), 0.018f, 0.22f);
+        FindAnyObjectByType<GameModeManager>()?.RecordShot(hitEnemy);
+        ApplyRecoil(1.4f, 0.2f);
+        if (CurrentAmmo == 0) TryReload();
     }
 
     private IEnumerator FireBurstRifle()
@@ -1142,7 +1208,21 @@ public sealed class SimpleRifle : MonoBehaviour
             foreach (RaycastHit penetratingHit in penetratingHits)
             {
                 IDamageable target = penetratingHit.collider.GetComponentInParent<IDamageable>();
-                if (target != null && pierced.Add(target) && targetsHit < 3)
+                if (target == null)
+                {
+                    CreateBulletHole(penetratingHit.point, penetratingHit.normal, penetratingHit.transform);
+                    tracerEnd = penetratingHit.point;
+                    break;
+                }
+                if (penetratingHit.collider.GetComponentInParent<TrainingTarget>() == null)
+                {
+                    ApplyDamage(penetratingHit, damage, true, 0f, true);
+                    CreateBulletHole(penetratingHit.point, penetratingHit.normal, penetratingHit.transform);
+                    tracerEnd = penetratingHit.point;
+                    hitEnemy = true;
+                    break;
+                }
+                if (pierced.Add(target) && targetsHit < 3)
                 {
                     ApplyDamage(penetratingHit, damage, true, 0f, true);
                     CreateArcLine(previousArcPoint, penetratingHit.point);
@@ -1152,6 +1232,7 @@ public sealed class SimpleRifle : MonoBehaviour
                     hitEnemy = true;
                 }
                 CreateBulletHole(penetratingHit.point, penetratingHit.normal, penetratingHit.transform);
+                if (targetsHit >= 3) break;
             }
         }
         else if (Physics.Raycast(ray, out RaycastHit hit, range, ~0, QueryTriggerInteraction.Ignore))
@@ -1266,7 +1347,7 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public void RestoreSpawnAmmo()
     {
-        int[] primaryReserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25 };
+        int[] primaryReserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25, 120, 30 };
         int[] secondaryReserves = { 0, 48, 30, 0, 32, 0, 24, 96, 240, 32, 20 };
         int[] specialistAmmo = { 1, 4, 3, 2, 10, 3, 5, 3, 4 };
         rifleAmmo = rifleMagazineSize;
@@ -1426,6 +1507,21 @@ public sealed class SimpleRifle : MonoBehaviour
         line.SetPosition(0, MuzzlePosition);
         line.SetPosition(1, end);
         Destroy(tracer, 0.06f);
+    }
+
+    private void CreateColoredTracer(Vector3 end, Color color, float width, float lifetime)
+    {
+        GameObject tracer = new GameObject("Special Weapon Tracer");
+        LineRenderer line = tracer.AddComponent<LineRenderer>();
+        line.material = tracerMaterial;
+        line.positionCount = 2;
+        line.startWidth = width;
+        line.endWidth = width * 0.2f;
+        line.startColor = color;
+        line.endColor = new Color(color.r, color.g, color.b, 0f);
+        line.SetPosition(0, MuzzlePosition);
+        line.SetPosition(1, end);
+        Destroy(tracer, lifetime);
     }
 
     private void CreateMuzzleFlash()

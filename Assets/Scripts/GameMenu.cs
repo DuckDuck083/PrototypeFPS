@@ -543,7 +543,7 @@ public sealed class GameMenu : MonoBehaviour
         GUI.backgroundColor = Color.white;
         int count = weapons.GetLoadoutOptionCount(weaponShopSlot);
         float width = 210f;
-        float height = 98f;
+        float height = 116f;
         int columns = Mathf.Min(Mathf.Max(3, Mathf.FloorToInt((Screen.width - 30f) / width)), count);
         float gridStart = (Screen.width - columns * width) * 0.5f;
         for (int i = 0; i < count; i++)
@@ -557,8 +557,11 @@ public sealed class GameMenu : MonoBehaviour
             GUI.DrawTexture(card, Texture2D.whiteTexture);
             GUI.color = Color.white;
             GUI.Label(new Rect(card.x + 8f, card.y + 7f, card.width - 16f, 38f), name, CenteredStyle(13));
-            if (owned) GUI.Label(new Rect(card.x, card.y + 55f, card.width, 28f), "OWNED", CenteredStyle(12));
-            else if (GUI.Button(new Rect(card.x + 15f, card.y + 52f, card.width - 30f, 32f), $"BUY  ◆ {economy.WeaponPrice(weaponShopSlot, i)}")) economy.BuyWeapon(weaponShopSlot, i, name);
+            string description = weapons.GetLoadoutOptionDescription(weaponShopSlot, i);
+            if (!string.IsNullOrEmpty(description))
+                GUI.Label(new Rect(card.x + 8f, card.y + 39f, card.width - 16f, 28f), description, CenteredStyle(10));
+            if (owned) GUI.Label(new Rect(card.x, card.y + 76f, card.width, 28f), "OWNED", CenteredStyle(12));
+            else if (GUI.Button(new Rect(card.x + 15f, card.y + 72f, card.width - 30f, 32f), $"BUY  ◆ {economy.WeaponPrice(weaponShopSlot, i)}")) economy.BuyWeapon(weaponShopSlot, i, name);
         }
     }
 
@@ -739,7 +742,7 @@ public sealed class GameMenu : MonoBehaviour
             int weapon = weapons.GetClassOptionIndex(slot, option);
             bool selected = weapons.IsLoadoutSelection(slot, weapon);
             bool unlocked = EconomyManager.Instance == null || EconomyManager.Instance.IsWeaponUnlocked(slot, weapon);
-            Rect card = new Rect(x + option * (cardWidth + gap), 285f, cardWidth, 220f);
+            Rect card = new Rect(x + option * (cardWidth + gap), 285f, cardWidth, 235f);
             GUI.backgroundColor = selected ? new Color(0.15f, 0.65f, 0.9f) : new Color(0.14f, 0.19f, 0.22f);
             GUI.enabled = unlocked;
             if (GUI.Button(card, ""))
@@ -752,8 +755,11 @@ public sealed class GameMenu : MonoBehaviour
             string weaponName = weapons.GetLoadoutOptionName(slot, weapon);
             DrawWeaponIcon(new Rect(card.x + 22f, card.y + 30f, card.width - 44f, 105f), slot, weaponName);
             GUI.Label(new Rect(card.x + 8f, card.y + 145f, card.width - 16f, 48f), weaponName, CenteredStyle(16));
-            if (selected) GUI.Label(new Rect(card.x, card.y + 194f, card.width, 20f), "EQUIPPED", CenteredStyle(12));
-            else if (!unlocked) GUI.Label(new Rect(card.x, card.y + 194f, card.width, 20f), "BUY IN BLACK MARKET", CenteredStyle(11));
+            string description = weapons.GetLoadoutOptionDescription(slot, weapon);
+            if (!string.IsNullOrEmpty(description))
+                GUI.Label(new Rect(card.x + 6f, card.y + 184f, card.width - 12f, 28f), description, CenteredStyle(10));
+            if (selected) GUI.Label(new Rect(card.x, card.y + 211f, card.width, 20f), "EQUIPPED", CenteredStyle(12));
+            else if (!unlocked) GUI.Label(new Rect(card.x, card.y + 211f, card.width, 20f), "BUY IN BLACK MARKET", CenteredStyle(11));
         }
     }
 
