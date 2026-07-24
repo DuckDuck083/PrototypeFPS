@@ -25,6 +25,7 @@ public sealed class GameMenu : MonoBehaviour
     private string promoCode = string.Empty;
     private string promoStatus = "Enter a code to redeem a special reward.";
     private Vector2 pageScroll;
+    private Vector2 homeScroll;
     private int selectedLoadoutSlot = -1;
     private int inventorySlot;
     private int inventoryWeapon;
@@ -148,7 +149,15 @@ public sealed class GameMenu : MonoBehaviour
         bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || inventoryOpen || reportOpen;
         if (!subPage)
         {
+            float homeContentHeight = Mathf.Max(680f, Screen.height);
+            homeScroll = GUI.BeginScrollView(
+                new Rect(0f, 115f, Screen.width, Screen.height - 115f),
+                homeScroll,
+                new Rect(0f, 115f, Mathf.Max(760f, Screen.width - 18f), homeContentHeight - 115f),
+                false,
+                true);
             DrawMainMenu();
+            GUI.EndScrollView();
             return;
         }
 
@@ -174,7 +183,8 @@ public sealed class GameMenu : MonoBehaviour
     private void DrawMainMenu()
     {
         EconomyManager economy = EconomyManager.Instance;
-        float top = Mathf.Max(128f, Screen.height * 0.18f);
+        float layoutHeight = Mathf.Max(680f, Screen.height);
+        float top = Mathf.Max(128f, layoutHeight * 0.18f);
         Rect profile = new Rect(42f, top, Mathf.Min(430f, Screen.width * 0.42f), 310f);
         GUI.color = new Color(0.035f, 0.065f, 0.09f, 0.96f);
         GUI.DrawTexture(profile, Texture2D.whiteTexture);
@@ -221,7 +231,7 @@ public sealed class GameMenu : MonoBehaviour
             GUI.backgroundColor = Color.white;
         }
 
-        GUI.Label(new Rect(0f, Screen.height - 38f, Screen.width, 28f), pausedMatch ? "P resumes  •  ESC exits the match for 0.5x credits" : "P pauses during a match  •  ESC exits the match", CenteredStyle(13));
+        GUI.Label(new Rect(0f, layoutHeight - 38f, Screen.width, 28f), pausedMatch ? "P resumes  •  ESC exits the match for 0.5x credits" : "P pauses during a match  •  ESC exits the match", CenteredStyle(13));
     }
 
     private void DrawQuitConfirmation()
