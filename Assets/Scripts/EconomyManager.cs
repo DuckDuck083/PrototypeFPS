@@ -58,7 +58,7 @@ public sealed class EconomyManager : MonoBehaviour
 
     private void Start() => ApplyPerks();
 
-    public bool IsModeUnlocked(int mode) => mode <= 1 || PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Mode.{mode}", 0) == 1;
+    public bool IsModeUnlocked(int mode) => mode <= 1 || mode == (int)GameModeManager.Mode.Tutorial || PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Mode.{mode}", 0) == 1;
     public bool IsClassUnlocked(int playerClass) => playerClass == 0 || PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Class.{playerClass}", 0) == 1;
     public bool IsWeaponUnlocked(int slot, int weapon) => IsStockWeapon(slot, weapon) || PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}", 0) == 1;
     public bool IsPerkUnlocked(int perk) => PlayerPrefs.GetInt($"PrototypeFPS.Unlock.Perk.{perk}", 0) == 1;

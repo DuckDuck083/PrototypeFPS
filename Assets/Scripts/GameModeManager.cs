@@ -2,7 +2,7 @@ using UnityEngine;
 
 public sealed class GameModeManager : MonoBehaviour
 {
-    public enum Mode { Classic, Fortress, Strong, Convoy, Campaign, Hardcore }
+    public enum Mode { Classic, Fortress, Strong, Convoy, Campaign, Hardcore, Tutorial }
 
     public WaveManager Spawner { get; private set; }
     public GameModeBase ActiveMode { get; private set; }
@@ -26,6 +26,7 @@ public sealed class GameModeManager : MonoBehaviour
         AddMode<ConvoyGameMode>();
         AddMode<CampaignGameMode>();
         AddMode<HardcoreGameMode>();
+        AddMode<TutorialGameMode>();
     }
 
     private void AddMode<T>() where T : GameModeBase
@@ -88,7 +89,7 @@ public sealed class GameModeManager : MonoBehaviour
     public void Finish(bool victory, string message)
     {
         Result = victory ? $"VICTORY — {message}" : $"DEFEAT — {message}";
-        if (victory && ActiveMode != null) EconomyManager.Instance?.RewardVictory(ActiveMode.Type);
+        if (victory && ActiveMode != null && ActiveMode.Type != Mode.Tutorial) EconomyManager.Instance?.RewardVictory(ActiveMode.Type);
         BuildReport(victory ? "VICTORY" : "DEFEAT", 1f);
         EconomyManager.Instance?.SettleMatch(1f);
         if (ActiveMode != null) ActiveMode.enabled = false;
@@ -98,7 +99,6 @@ public sealed class GameModeManager : MonoBehaviour
     public void RecordShot(bool hit) { shotsFired++; if (hit) shotsHit++; }
     public void RecordDamage(float amount) => damageDone += Mathf.Max(0f, amount);
     public void RecordHealthLost(float amount) => healthLost += Mathf.Max(0f, amount);
-    public void ClearReport() => LastReport = string.Empty;
 
     private void BuildReport(string outcome, float payoutMultiplier)
     {

@@ -16,7 +16,6 @@ public sealed class GameMenu : MonoBehaviour
     private bool settingsOpen;
     private bool inventoryOpen;
     private bool inventorySkinsOpen;
-    private bool openedFromHub;
     private bool pausedMatch;
     private bool reportOpen;
     private bool confirmQuitMatch;
@@ -44,7 +43,7 @@ public sealed class GameMenu : MonoBehaviour
         movement = GetComponent<FirstPersonController>();
         weapons = GetComponent<SimpleRifle>();
         vitals = GetComponent<PlayerVitals>();
-        ReturnToHub();
+        OpenMenu();
     }
 
     private void Update()
@@ -58,7 +57,7 @@ public sealed class GameMenu : MonoBehaviour
             reportOpen = true;
             return;
         }
-        if (!menuOpen && manager != null && manager.MatchRunning && Keyboard.current.pKey.wasPressedThisFrame)
+        if (!menuOpen && Keyboard.current.pKey.wasPressedThisFrame)
         {
             pausedMatch = true;
             OpenMenu();
@@ -76,7 +75,6 @@ public sealed class GameMenu : MonoBehaviour
     private void OpenMenu()
     {
         menuOpen = true;
-        openedFromHub = false;
         loadoutOpen = false;
         playModeOpen = false;
         shopOpen = false;
@@ -98,47 +96,11 @@ public sealed class GameMenu : MonoBehaviour
         Cursor.visible = true;
     }
 
-    public bool IsMenuOpen => menuOpen;
-
-    public void OpenHubPage(string page)
-    {
-        OpenMenu();
-        openedFromHub = true;
-        if (page == "PLAY") playModeOpen = true;
-        else if (page == "SHOP") shopOpen = true;
-        else if (page == "INVENTORY") inventoryOpen = true;
-        else if (page == "LOADOUT") loadoutOpen = true;
-        else if (page == "QUESTS") questsOpen = true;
-        else if (page == "SETTINGS") settingsOpen = true;
-    }
-
-    private void ReturnToHub()
-    {
-        GameModeManager manager = FindAnyObjectByType<GameModeManager>();
-        manager?.AbandonActiveMode();
-        manager?.ClearReport();
-        menuOpen = false;
-        openedFromHub = false;
-        Time.timeScale = 1f;
-        vitals.enabled = true;
-        movement.enabled = true;
-        weapons.enabled = true;
-        movement.RestoreControls();
-        CharacterController controller = GetComponent<CharacterController>();
-        if (controller != null)
-        {
-            controller.enabled = false;
-            transform.position = Vector3.zero;
-            controller.enabled = true;
-        }
-    }
-
     private void StartGame(GameModeManager.Mode mode)
     {
         GameModeManager manager = FindAnyObjectByType<GameModeManager>();
         if (manager == null) return;
         manager.StartMode(mode);
-        openedFromHub = false;
         pausedMatch = false;
         menuOpen = false;
         Time.timeScale = 1f;
@@ -187,11 +149,6 @@ public sealed class GameMenu : MonoBehaviour
         bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || inventoryOpen || reportOpen;
         if (!subPage)
         {
-            if (openedFromHub)
-            {
-                ReturnToHub();
-                return;
-            }
             float homeContentHeight = Mathf.Max(680f, Screen.height);
             homeScroll = GUI.BeginScrollView(
                 new Rect(0f, 115f, Screen.width, Screen.height - 115f),
@@ -259,13 +216,14 @@ public sealed class GameMenu : MonoBehaviour
         float buttonHeight = 50f;
         float gap = 8f;
         DrawHomeTile(new Rect(buttonX, top, buttonWidth, buttonHeight), pausedMatch ? "RESUME" : "PLAY", pausedMatch ? "Return to match" : "Choose game mode", new Color(0.15f, 0.65f, 0.95f), () => { if (pausedMatch) ResumeMatch(); else { pageScroll = Vector2.zero; playModeOpen = true; } });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap), buttonWidth, buttonHeight), "INVENTORY", "Weapons and skins", new Color(0.25f, 0.82f, 0.72f), () => { pageScroll = Vector2.zero; inventoryOpen = true; inventorySkinsOpen = false; });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 2f, buttonWidth, buttonHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 3f, buttonWidth, buttonHeight), "BLACK MARKET", "Shop and crates", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 4f, buttonWidth, buttonHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 5f, buttonWidth, buttonHeight), "PROMO CODES", "Redeem rewards", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap), buttonWidth, buttonHeight), "TUTORIAL", "Soldier training and enemy guide", new Color(0.3f, 0.85f, 1f), () => StartGame(GameModeManager.Mode.Tutorial));
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 2f, buttonWidth, buttonHeight), "INVENTORY", "Weapons and skins", new Color(0.25f, 0.82f, 0.72f), () => { pageScroll = Vector2.zero; inventoryOpen = true; inventorySkinsOpen = false; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 3f, buttonWidth, buttonHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 4f, buttonWidth, buttonHeight), "BLACK MARKET", "Shop and crates", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 5f, buttonWidth, buttonHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 6f, buttonWidth, buttonHeight), "PROMO CODES", "Redeem rewards", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
         bool dev = EconomyManager.Instance != null && EconomyManager.Instance.DevModeUnlocked;
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 6f, buttonWidth, buttonHeight), "SETTINGS", "Audio, controls and display", new Color(0.48f, 0.68f, 0.9f), () => { pageScroll = Vector2.zero; settingsOpen = true; });
+        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 7f, buttonWidth, buttonHeight), "SETTINGS", "Audio, controls and display", new Color(0.48f, 0.68f, 0.9f), () => { pageScroll = Vector2.zero; settingsOpen = true; });
 
         if (dev)
         {
@@ -738,11 +696,7 @@ public sealed class GameMenu : MonoBehaviour
         report.fontStyle = FontStyle.Bold;
         report.normal.textColor = new Color(0.82f, 0.9f, 0.96f);
         GUI.Label(new Rect(panel.x + 35f, panel.y + 28f, panel.width - 70f, 285f), manager == null ? "NO REPORT AVAILABLE" : manager.LastReport, report);
-        if (GUI.Button(new Rect(panel.x + 170f, panel.y + 325f, 240f, 44f), "RETURN TO BASE"))
-        {
-            reportOpen = false;
-            openedFromHub = true;
-        }
+        if (GUI.Button(new Rect(panel.x + 170f, panel.y + 325f, 240f, 44f), "RETURN TO COMMAND")) reportOpen = false;
     }
 
     private static void DrawStoreCard(Rect card, string title, string description, bool owned, int price)

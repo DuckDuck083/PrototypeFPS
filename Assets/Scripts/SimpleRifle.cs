@@ -1719,6 +1719,14 @@ public sealed class SimpleRifle : MonoBehaviour
         help.normal.textColor = new Color(0.75f, 0.82f, 0.88f);
         GUI.Label(new Rect(Screen.width * 0.5f - 390f, 12f, 780f, 28f), $"{CurrentClass.ToString().ToUpper()}   [1] {GetLoadoutSlotName(0)}   [2] {GetLoadoutSlotName(1)}   [3] {GetLoadoutSlotName(2)}   [4] {GetLoadoutSlotName(3)}", help);
 
+        GUI.color = new Color(0.01f, 0.025f, 0.04f, 0.82f);
+        GUI.DrawTexture(new Rect(Screen.width - 292f, 165f, 272f, 108f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle controls = new GUIStyle(GUI.skin.label) { fontSize = 10, wordWrap = true };
+        controls.normal.textColor = new Color(0.76f, 0.86f, 0.92f);
+        GUI.Label(new Rect(Screen.width - 282f, 171f, 252f, 96f),
+            $"WASD MOVE  •  SHIFT SPRINT  •  SPACE JUMP\nCTRL/C CROUCH  •  P PAUSE  •  1–4 EQUIP\n{CurrentControlHint()}", controls);
+
         if (CurrentClass == PlayerClass.Scout)
         {
             float drinkRemaining = Mathf.Max(0f, energyDrinkUntil - Time.time);
@@ -1792,6 +1800,24 @@ public sealed class SimpleRifle : MonoBehaviour
             string turretState = activeTurret != null ? "TURRET ACTIVE" : ready >= 1f ? "TURRET READY [LMB]" : "TURRET COOLDOWN";
             GUI.Label(new Rect(turretBar.x, turretBar.y - 23f, turretBar.width, 22f), turretState, help);
         }
+    }
+
+    private string CurrentControlHint()
+    {
+        int option = slotSelections[currentSlot];
+        if (currentSlot == 2) return "LMB — MELEE ATTACK";
+        if (currentSlot == 3)
+        {
+            if (option == 1) return "HOLD/RELEASE LMB — PRIME/THROW GRENADE";
+            if (option == 9) return "LMB — DRINK ENERGY BOOST";
+            if (option == 10) return "LMB — BLINK FORWARD";
+            return "LMB — USE UTILITY";
+        }
+        if (currentSlot == 1 && option == 0) return "HOLD LMB — BLOCK WITH SHIELD";
+        if (currentSlot == 1 && option == 3) return "LMB — USE MEDPACK";
+        if (currentSlot == 0 && option == 5 || currentSlot == 1 && option == 6) return "LMB — LAUNCH STICKY  •  RMB — DETONATE";
+        if (IsSniperRifleEquipped) return "RMB — SCOPE  •  LMB — CHARGED SHOT  •  R — RELOAD";
+        return "LMB — FIRE  •  RMB — AIM  •  R — RELOAD";
     }
 
     private void DrawHitMarker(GUIStyle centered)
