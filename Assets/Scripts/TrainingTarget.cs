@@ -72,14 +72,14 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             || enemyType == EnemyArchetype.Sniper || enemyType == EnemyArchetype.Demolition || enemyType == EnemyArchetype.Tank
             || enemyType == EnemyArchetype.Engineer || enemyType == EnemyArchetype.Medic || enemyType == EnemyArchetype.Pyro || enemyType == EnemyArchetype.Officer || enemyType == EnemyArchetype.Scout;
         usesRifle = enemyType == EnemyArchetype.Rifle || enemyType == EnemyArchetype.Tank || enemyType == EnemyArchetype.Officer;
-        attackInterval = enemyType == EnemyArchetype.Sniper ? 2.5f
-            : enemyType == EnemyArchetype.Demolition ? 1.7f
-            : enemyType == EnemyArchetype.Tank ? 0.16f
+        attackInterval = enemyType == EnemyArchetype.Sniper ? 2.05f
+            : enemyType == EnemyArchetype.Demolition ? 1.3f
+            : enemyType == EnemyArchetype.Tank ? 0.13f
             : enemyType == EnemyArchetype.Rifle ? 0.32f
-            : enemyType == EnemyArchetype.Handgun ? 0.85f
+            : enemyType == EnemyArchetype.Handgun ? 0.65f
             : enemyType == EnemyArchetype.Knife ? 0.55f
-            : enemyType == EnemyArchetype.Pyro ? 0.16f
-            : enemyType == EnemyArchetype.Scout ? 0.42f
+            : enemyType == EnemyArchetype.Pyro ? 0.12f
+            : enemyType == EnemyArchetype.Scout ? 0.28f
             : enemyType == EnemyArchetype.Officer ? 0.7f
             : 1f;
         maximumWeaponAmmo = enemyType == EnemyArchetype.Handgun ? 12
@@ -257,7 +257,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         }
         else if (archetype == EnemyArchetype.Engineer && engineerTurret == null)
         {
-            nextAbilityTime = Time.time + 14f;
+            nextAbilityTime = Time.time + 9f;
             GameObject turret = new GameObject("Enemy Engineer Turret");
             turret.transform.position = transform.position + transform.right * 1.5f;
             engineerTurret = turret.AddComponent<EnemyTurret>();

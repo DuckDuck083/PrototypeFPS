@@ -34,13 +34,17 @@ public sealed class EnemyBombProjectile : MonoBehaviour
     {
         if (exploded) return;
         exploded = true;
-        const float radius = 4.5f;
+        const float radius = 6f;
         PlayerVitals player = FindAnyObjectByType<PlayerVitals>();
         if (player != null)
         {
             float distance = Vector3.Distance(transform.position, player.transform.position);
             if (distance <= radius)
-                player.TakeExplosiveDamage(damage * Mathf.Clamp01(1f - distance / (radius * 1.25f)), transform.position);
+            {
+                float proximity = 1f - Mathf.Clamp01(distance / radius);
+                float blastDamage = damage * Mathf.Lerp(0.55f, 1f, proximity);
+                player.TakeExplosiveDamage(blastDamage, transform.position);
+            }
         }
         HashSet<EngineerTurret> turrets = new HashSet<EngineerTurret>();
         HashSet<DestructibleObjective> objectives = new HashSet<DestructibleObjective>();

@@ -2,7 +2,7 @@ using UnityEngine;
 
 public sealed class EnemyTurret : MonoBehaviour, IDamageable
 {
-    private float health = 140f;
+    private float health = 220f;
     private float nextShotTime;
     private Transform owner;
     private Transform head;
@@ -28,13 +28,13 @@ public sealed class EnemyTurret : MonoBehaviour, IDamageable
         PlayerVitals player = FindAnyObjectByType<PlayerVitals>();
         if (player == null || player.IsDead) return;
         Vector3 direction = player.transform.position + Vector3.up - head.position;
-        if (direction.magnitude > 32f) return;
+        if (direction.magnitude > 38f) return;
         head.rotation = Quaternion.LookRotation(direction);
         if (Time.time < nextShotTime) return;
-        nextShotTime = Time.time + 0.38f;
-        if (Physics.Raycast(head.position, direction.normalized, out RaycastHit hit, 32f, ~0, QueryTriggerInteraction.Ignore)
+        nextShotTime = Time.time + 0.26f;
+        if (Physics.Raycast(head.position, direction.normalized, out RaycastHit hit, 38f, ~0, QueryTriggerInteraction.Ignore)
             && hit.collider.GetComponentInParent<PlayerVitals>() != null)
-            player.TakeDamage(6f, transform.position);
+            player.TakeDamage(10f, transform.position);
     }
 
     public void TakeDamage(float amount)
