@@ -184,6 +184,28 @@ public sealed class EconomyManager : MonoBehaviour
 
     public void AdminGrantMoney(int amount) => AddMoney(Mathf.Max(0, amount), $"ADMIN: +{amount:N0} CREDITS");
 
+    public void AdminGrantExperience(int amount)
+    {
+        AddExperience(Mathf.Max(0, amount));
+        Notify($"ADMIN: +{amount:N0} XP");
+    }
+
+    public void AdminGrantXpBoosts(int matches)
+    {
+        XpBoostMatches += Mathf.Max(0, matches);
+        PlayerPrefs.SetInt(XpBoostKey, XpBoostMatches);
+        PlayerPrefs.Save();
+        Notify($"ADMIN: +{matches} DOUBLE-XP MATCHES");
+    }
+
+    public void AdminCompleteAllQuests()
+    {
+        for (int i = 0; i < questNames.Length; i++)
+            PlayerPrefs.SetInt($"PrototypeFPS.Quest.{i}.Progress", questGoals[i]);
+        PlayerPrefs.Save();
+        Notify("ADMIN: ALL QUESTS READY TO CLAIM");
+    }
+
     public void AdminUnlockAll()
     {
         for (int i = 0; i < ModePrices.Length; i++) PlayerPrefs.SetInt($"PrototypeFPS.Unlock.Mode.{i}", 1);

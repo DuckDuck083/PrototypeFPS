@@ -29,6 +29,11 @@ public sealed class GameMenu : MonoBehaviour
     private int selectedLoadoutSlot = -1;
     private int inventorySlot;
     private int inventoryWeapon;
+    private bool crateOpening;
+    private bool crateRewardGranted;
+    private int openingCrateTier;
+    private float crateOpenedAt;
+    private string crateReward = string.Empty;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void EnsureMenuExists()
@@ -161,7 +166,7 @@ public sealed class GameMenu : MonoBehaviour
             return;
         }
 
-        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : inventoryOpen ? 760f : loadoutOpen ? 640f : 610f;
+        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : inventoryOpen ? 760f : adminOpen ? 720f : loadoutOpen ? 640f : 610f;
         Rect viewport = new Rect(0f, 0f, Screen.width, Screen.height);
         Rect content = new Rect(0f, 0f, Mathf.Max(760f, Screen.width - 18f), Mathf.Max(contentHeight, Screen.height));
         pageScroll = GUI.BeginScrollView(viewport, pageScroll, content, false, true);
@@ -175,6 +180,9 @@ public sealed class GameMenu : MonoBehaviour
         else if (inventoryOpen) DrawInventory();
         else if (reportOpen) DrawMatchReport();
         GUI.EndScrollView();
+
+        if (crateOpening && EconomyManager.Instance != null)
+            DrawCrateOpening(EconomyManager.Instance);
 
         if (pageScroll.y > 12f && GUI.Button(new Rect(Screen.width - 118f, 18f, 92f, 36f), "TOP"))
             pageScroll.y = 0f;
@@ -475,7 +483,7 @@ public sealed class GameMenu : MonoBehaviour
         warning.normal.textColor = new Color(1f, 0.62f, 0.15f);
         GUI.Label(new Rect(0f, 120f, Screen.width, 28f), "AUTHORIZED PERSONNEL ONLY // CHANGES SAVE IMMEDIATELY", warning);
 
-        Rect panel = new Rect(Screen.width * 0.5f - 390f, 165f, 780f, 360f);
+        Rect panel = new Rect(Screen.width * 0.5f - 410f, 150f, 820f, 535f);
         GUI.color = new Color(0.035f, 0.045f, 0.06f, 0.98f);
         GUI.DrawTexture(panel, Texture2D.whiteTexture);
         GUI.color = new Color(0.95f, 0.24f, 0.16f);
@@ -484,30 +492,61 @@ public sealed class GameMenu : MonoBehaviour
 
         PlayerVitals playerVitals = GetComponent<PlayerVitals>();
         SimpleRifle rifle = GetComponent<SimpleRifle>();
-        GUI.Label(new Rect(panel.x + 35f, panel.y + 22f, 330f, 30f), "CURRENCY COMMANDS", CenteredStyle(17));
-        if (GUI.Button(new Rect(panel.x + 35f, panel.y + 65f, 100f, 42f), "+100")) economy.AdminGrantMoney(100);
-        if (GUI.Button(new Rect(panel.x + 145f, panel.y + 65f, 100f, 42f), "+1,000")) economy.AdminGrantMoney(1000);
-        if (GUI.Button(new Rect(panel.x + 255f, panel.y + 65f, 110f, 42f), "+10,000")) economy.AdminGrantMoney(10000);
+        GUI.Label(new Rect(panel.x + 25f, panel.y + 18f, 350f, 30f), "PROGRESSION", CenteredStyle(17));
+        if (GUI.Button(new Rect(panel.x + 25f, panel.y + 55f, 105f, 38f), "+1K CREDITS")) economy.AdminGrantMoney(1000);
+        if (GUI.Button(new Rect(panel.x + 140f, panel.y + 55f, 105f, 38f), "+10K CREDITS")) economy.AdminGrantMoney(10000);
+        if (GUI.Button(new Rect(panel.x + 255f, panel.y + 55f, 105f, 38f), "+100K CREDITS")) economy.AdminGrantMoney(100000);
+        if (GUI.Button(new Rect(panel.x + 25f, panel.y + 101f, 105f, 38f), "+500 XP")) economy.AdminGrantExperience(500);
+        if (GUI.Button(new Rect(panel.x + 140f, panel.y + 101f, 105f, 38f), "+5,000 XP")) economy.AdminGrantExperience(5000);
+        if (GUI.Button(new Rect(panel.x + 255f, panel.y + 101f, 105f, 38f), "+10 XP BOOSTS")) economy.AdminGrantXpBoosts(10);
 
-        GUI.Label(new Rect(panel.x + 410f, panel.y + 22f, 330f, 30f), "PLAYER OVERRIDES", CenteredStyle(17));
+        GUI.Label(new Rect(panel.x + 420f, panel.y + 18f, 350f, 30f), "PLAYER OVERRIDES", CenteredStyle(17));
         GUI.backgroundColor = playerVitals.InfiniteHealth ? new Color(0.12f, 0.8f, 0.4f) : new Color(0.25f, 0.28f, 0.32f);
-        if (GUI.Button(new Rect(panel.x + 420f, panel.y + 65f, 145f, 42f), playerVitals.InfiniteHealth ? "GOD MODE: ON" : "GOD MODE: OFF")) playerVitals.InfiniteHealth = !playerVitals.InfiniteHealth;
+        if (GUI.Button(new Rect(panel.x + 420f, panel.y + 55f, 170f, 38f), playerVitals.InfiniteHealth ? "GOD MODE: ON" : "GOD MODE: OFF")) playerVitals.InfiniteHealth = !playerVitals.InfiniteHealth;
         GUI.backgroundColor = rifle.InfiniteAmmo ? new Color(0.12f, 0.8f, 0.4f) : new Color(0.25f, 0.28f, 0.32f);
-        if (GUI.Button(new Rect(panel.x + 575f, panel.y + 65f, 145f, 42f), rifle.InfiniteAmmo ? "INF AMMO: ON" : "INF AMMO: OFF")) rifle.InfiniteAmmo = !rifle.InfiniteAmmo;
+        if (GUI.Button(new Rect(panel.x + 600f, panel.y + 55f, 170f, 38f), rifle.InfiniteAmmo ? "INF AMMO: ON" : "INF AMMO: OFF")) rifle.InfiniteAmmo = !rifle.InfiniteAmmo;
+        bool boostedDamage = rifle.ModeDamageMultiplier >= 3f;
+        GUI.backgroundColor = boostedDamage ? new Color(0.12f, 0.8f, 0.4f) : new Color(0.25f, 0.28f, 0.32f);
+        if (GUI.Button(new Rect(panel.x + 420f, panel.y + 101f, 170f, 38f), boostedDamage ? "3X DAMAGE: ON" : "3X DAMAGE: OFF"))
+            rifle.ModeDamageMultiplier = boostedDamage ? 1f : 3f;
         GUI.backgroundColor = Color.white;
-
-        GUI.Label(new Rect(panel.x + 35f, panel.y + 145f, panel.width - 70f, 30f), "WORLD & PROGRESSION", CenteredStyle(17));
-        if (GUI.Button(new Rect(panel.x + 55f, panel.y + 195f, 200f, 46f), "FULL HEAL + RESTOCK"))
+        if (GUI.Button(new Rect(panel.x + 600f, panel.y + 101f, 170f, 38f), "HEAL + RESTOCK"))
         {
             playerVitals.RestoreForNewMode();
             rifle.RestoreSpawnAmmo();
         }
-        if (GUI.Button(new Rect(panel.x + 290f, panel.y + 195f, 200f, 46f), "UNLOCK ALL CONTENT")) economy.AdminUnlockAll();
-        if (GUI.Button(new Rect(panel.x + 525f, panel.y + 195f, 200f, 46f), "CLEAR ALL ENEMIES")) FindAnyObjectByType<WaveManager>()?.ClearEnemies();
+
+        GUI.Label(new Rect(panel.x + 25f, panel.y + 158f, panel.width - 50f, 30f), "CONTENT & WORLD", CenteredStyle(17));
+        if (GUI.Button(new Rect(panel.x + 65f, panel.y + 195f, 210f, 42f), "UNLOCK ALL CONTENT")) economy.AdminUnlockAll();
+        if (GUI.Button(new Rect(panel.x + 305f, panel.y + 195f, 210f, 42f), "COMPLETE ALL QUESTS")) economy.AdminCompleteAllQuests();
+        if (GUI.Button(new Rect(panel.x + 545f, panel.y + 195f, 210f, 42f), "CLEAR ALL ENEMIES")) FindAnyObjectByType<WaveManager>()?.ClearEnemies();
+
+        GUI.Label(new Rect(panel.x + 25f, panel.y + 255f, panel.width - 50f, 30f), "SPAWN HOSTILE", CenteredStyle(17));
+        TrainingTarget.EnemyArchetype[] spawnTypes = { TrainingTarget.EnemyArchetype.Tank, TrainingTarget.EnemyArchetype.Demolition, TrainingTarget.EnemyArchetype.Engineer, TrainingTarget.EnemyArchetype.Scout, TrainingTarget.EnemyArchetype.Sniper, TrainingTarget.EnemyArchetype.Pyro, TrainingTarget.EnemyArchetype.Medic, TrainingTarget.EnemyArchetype.Officer };
+        for (int i = 0; i < spawnTypes.Length; i++)
+        {
+            int row = i / 4;
+            int column = i % 4;
+            if (GUI.Button(new Rect(panel.x + 35f + column * 190f, panel.y + 325f + row * 50f, 175f, 40f), spawnTypes[i].ToString().ToUpper()))
+                SpawnAdminEnemy(spawnTypes[i]);
+        }
         GUIStyle active = CenteredStyle(13);
         active.normal.textColor = new Color(0.45f, 0.9f, 1f);
+        GUI.Label(new Rect(panel.x + 30f, panel.y + 475f, panel.width - 60f, 35f), "Spawned enemies appear about 14 meters in front of the player.", active);
         GUI.Label(new Rect(panel.x + 30f, panel.y + 285f, panel.width - 60f, 35f), $"DEV MODE ACTIVE  •  CREDITS {economy.Money:N0}  •  HEALTH {(playerVitals.InfiniteHealth ? "∞" : Mathf.CeilToInt(playerVitals.Health).ToString())}  •  AMMO {(rifle.InfiniteAmmo ? "∞" : "NORMAL")}", active);
         if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) adminOpen = false;
+    }
+
+    private void SpawnAdminEnemy(TrainingTarget.EnemyArchetype type)
+    {
+        WaveManager spawner = FindAnyObjectByType<WaveManager>();
+        if (spawner == null || vitals == null) return;
+        Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+        if (forward.sqrMagnitude < 0.1f) forward = Vector3.forward;
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+        Vector3 position = transform.position + forward * 14f + right * Random.Range(-3f, 3f);
+        position.y = 0f;
+        spawner.SpawnEnemy(type, position);
     }
 
     private void DrawShop()
@@ -645,7 +684,7 @@ public sealed class GameMenu : MonoBehaviour
         }
     }
 
-    private static void DrawCrateShop(EconomyManager economy)
+    private void DrawCrateShop(EconomyManager economy)
     {
         GUIStyle info = CenteredStyle(14);
         info.normal.textColor = new Color(0.3f, 0.82f, 1f);
@@ -675,11 +714,60 @@ public sealed class GameMenu : MonoBehaviour
             GUI.Label(new Rect(card.x + 10f, card.y + 135f, card.width - 20f, 48f), EconomyManager.CrateOdds(i), odds);
             GUI.Label(new Rect(card.x, card.y + 190f, card.width, 30f), $"◆ {EconomyManager.CratePrices[i]:N0}", CenteredStyle(17));
             GUI.backgroundColor = colors[i];
-            if (GUI.Button(new Rect(card.x + 24f, card.y + 232f, card.width - 48f, 40f), "OPEN CRATE"))
-                economy.OpenCrate(i);
+            GUI.enabled = !crateOpening && economy.Money >= EconomyManager.CratePrices[i];
+            if (GUI.Button(new Rect(card.x + 24f, card.y + 232f, card.width - 48f, 40f), economy.Money >= EconomyManager.CratePrices[i] ? "OPEN CRATE" : "NEED CREDITS"))
+                BeginCrateOpening(i);
+            GUI.enabled = true;
             GUI.backgroundColor = Color.white;
         }
         GUI.Label(new Rect(0f, 535f, Screen.width, 26f), $"COLLECTED WEAPON SKINS  {economy.OwnedSkinCount} / 6    •    2× XP BOOST  {economy.XpBoostMatches} MATCHES", CenteredStyle(14));
+    }
+
+    private void BeginCrateOpening(int tier)
+    {
+        crateOpening = true;
+        crateRewardGranted = false;
+        openingCrateTier = tier;
+        crateOpenedAt = Time.unscaledTime;
+        crateReward = string.Empty;
+    }
+
+    private void DrawCrateOpening(EconomyManager economy)
+    {
+        float elapsed = Time.unscaledTime - crateOpenedAt;
+        Color[] accents = { new Color(0.18f, 0.75f, 0.38f), new Color(0.15f, 0.65f, 1f), new Color(1f, 0.55f, 0.08f) };
+        Color accent = accents[Mathf.Clamp(openingCrateTier, 0, accents.Length - 1)];
+        if (!crateRewardGranted && elapsed >= 2.15f)
+        {
+            economy.OpenCrate(openingCrateTier);
+            crateReward = economy.LastNotification;
+            crateRewardGranted = true;
+        }
+
+        GUI.color = new Color(0.005f, 0.01f, 0.018f, 0.95f);
+        GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+        float pulse = 1f + Mathf.Sin(elapsed * 14f) * (crateRewardGranted ? 0.015f : 0.045f);
+        float shake = crateRewardGranted ? 0f : Mathf.Sin(elapsed * 42f) * Mathf.Lerp(9f, 1f, Mathf.Clamp01(elapsed / 2f));
+        Rect crate = new Rect(Screen.width * 0.5f - 145f * pulse + shake, Screen.height * 0.5f - 115f * pulse, 290f * pulse, 230f * pulse);
+        GUI.color = new Color(0.025f, 0.045f, 0.06f);
+        GUI.DrawTexture(crate, Texture2D.whiteTexture);
+        GUI.color = accent;
+        GUI.DrawTexture(new Rect(crate.x, crate.y, crate.width, 14f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(crate.x + 20f, crate.y + crate.height * 0.47f, crate.width - 40f, 10f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(crate.center.x - 24f, crate.y + crate.height * 0.39f, 48f, 48f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUIStyle title = CenteredStyle(crateRewardGranted ? 30 : 23);
+        title.fontStyle = FontStyle.Bold;
+        title.normal.textColor = crateRewardGranted ? accent : Color.white;
+        string message = crateRewardGranted ? "REWARD ACQUIRED" : elapsed < 0.8f ? "SECURITY SEAL RELEASED" : elapsed < 1.55f ? "OPENING CONTAINER..." : "AUTHENTICATING REWARD...";
+        GUI.Label(new Rect(0f, crate.y - 78f, Screen.width, 50f), message, title);
+        if (!crateRewardGranted) return;
+        GUIStyle rewardStyle = CenteredStyle(19);
+        rewardStyle.fontStyle = FontStyle.Bold;
+        rewardStyle.wordWrap = true;
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, crate.y + crate.height + 20f, 600f, 64f), crateReward, rewardStyle);
+        if (elapsed >= 2.75f && GUI.Button(new Rect(Screen.width * 0.5f - 105f, crate.y + crate.height + 92f, 210f, 44f), "COLLECT"))
+            crateOpening = false;
     }
 
     private void DrawMatchReport()
@@ -964,11 +1052,65 @@ public sealed class GameMenu : MonoBehaviour
     {
         GUI.color = new Color(0.025f, 0.035f, 0.04f, 0.9f);
         GUI.DrawTexture(rect, Texture2D.whiteTexture);
-        GUI.color = slot == 2 ? new Color(0.75f, 0.78f, 0.8f) : slot == 3 ? new Color(0.25f, 0.75f, 0.45f) : new Color(0.28f, 0.58f, 0.72f);
-        float length = weaponName.Contains("PISTOL") || weaponName.Contains("HANDGUN") ? 0.5f : weaponName.Contains("SHIELD") ? 0.7f : 0.82f;
-        GUI.DrawTexture(new Rect(rect.x + rect.width * (1f - length) * 0.5f, rect.y + rect.height * 0.38f, rect.width * length, rect.height * 0.24f), Texture2D.whiteTexture);
-        if (slot == 2) GUI.DrawTexture(new Rect(rect.center.x - 5f, rect.y + 12f, 10f, rect.height - 24f), Texture2D.whiteTexture);
-        else GUI.DrawTexture(new Rect(rect.x + rect.width * 0.35f, rect.y + rect.height * 0.56f, rect.width * 0.13f, rect.height * 0.28f), Texture2D.whiteTexture);
+        string name = weaponName.ToUpperInvariant();
+        Color metal = name.Contains("LASER") || name.Contains("ENERGY") ? new Color(0.05f, 0.85f, 1f)
+            : name.Contains("FIRE") || name.Contains("FLAME") ? new Color(1f, 0.28f, 0.04f)
+            : slot == 2 ? new Color(0.76f, 0.8f, 0.84f)
+            : slot == 3 ? new Color(0.25f, 0.78f, 0.46f) : new Color(0.28f, 0.62f, 0.82f);
+        Color dark = new Color(0.09f, 0.12f, 0.15f);
+
+        if (name.Contains("BOW"))
+        {
+            GUI.color = metal;
+            GUI.DrawTexture(new Rect(rect.x + rect.width * 0.2f, rect.y + rect.height * 0.2f, 7f, rect.height * 0.62f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x + rect.width * 0.76f, rect.y + rect.height * 0.2f, 7f, rect.height * 0.62f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x + rect.width * 0.2f, rect.center.y - 2f, rect.width * 0.58f, 4f), Texture2D.whiteTexture);
+            GUI.color = new Color(0.65f, 0.32f, 0.1f);
+            GUI.DrawTexture(new Rect(rect.center.x - 4f, rect.y + 8f, 8f, rect.height - 16f), Texture2D.whiteTexture);
+        }
+        else if (slot == 2)
+        {
+            GUI.color = dark;
+            GUI.DrawTexture(new Rect(rect.center.x - 7f, rect.y + rect.height * 0.42f, 14f, rect.height * 0.45f), Texture2D.whiteTexture);
+            GUI.color = metal;
+            float bladeWidth = name.Contains("PIPE") || name.Contains("BATON") ? 14f : name.Contains("AXE") ? 38f : 22f;
+            GUI.DrawTexture(new Rect(rect.center.x - bladeWidth * 0.5f, rect.y + 8f, bladeWidth, rect.height * 0.55f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.center.x - 28f, rect.y + rect.height * 0.62f, 56f, 8f), Texture2D.whiteTexture);
+        }
+        else if (name.Contains("SHIELD"))
+        {
+            GUI.color = metal;
+            GUI.DrawTexture(new Rect(rect.x + rect.width * 0.24f, rect.y + 8f, rect.width * 0.52f, rect.height - 16f), Texture2D.whiteTexture);
+            GUI.color = dark;
+            GUI.DrawTexture(new Rect(rect.center.x - 3f, rect.y + 17f, 6f, rect.height - 34f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x + rect.width * 0.32f, rect.center.y - 3f, rect.width * 0.36f, 6f), Texture2D.whiteTexture);
+        }
+        else
+        {
+            bool pistol = name.Contains("PISTOL") || name.Contains("HANDGUN") || name.Contains("REVOLVER");
+            bool rocket = name.Contains("ROCKET") || name.Contains("LAUNCHER");
+            bool shotgun = name.Contains("SHOTGUN") || name.Contains("SPRAYER");
+            float bodyLength = pistol ? 0.43f : rocket ? 0.86f : 0.68f;
+            float bodyHeight = rocket ? 0.3f : shotgun ? 0.26f : 0.2f;
+            float bodyX = rect.x + rect.width * (1f - bodyLength) * 0.5f;
+            GUI.color = metal;
+            GUI.DrawTexture(new Rect(bodyX, rect.y + rect.height * 0.34f, rect.width * bodyLength, rect.height * bodyHeight), Texture2D.whiteTexture);
+            GUI.color = dark;
+            GUI.DrawTexture(new Rect(bodyX + rect.width * bodyLength * 0.74f, rect.y + rect.height * 0.3f, rect.width * (rocket ? 0.12f : 0.2f), rect.height * 0.1f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(bodyX + rect.width * bodyLength * 0.24f, rect.y + rect.height * 0.52f, rect.width * 0.11f, rect.height * 0.3f), Texture2D.whiteTexture);
+            if (!pistol)
+                GUI.DrawTexture(new Rect(bodyX - rect.width * 0.1f, rect.y + rect.height * 0.39f, rect.width * 0.13f, rect.height * 0.16f), Texture2D.whiteTexture);
+            if (name.Contains("SNIPER") || name.Contains("MARKSMAN"))
+            {
+                GUI.color = new Color(0.82f, 0.88f, 0.92f);
+                GUI.DrawTexture(new Rect(bodyX + rect.width * 0.28f, rect.y + rect.height * 0.2f, rect.width * 0.28f, rect.height * 0.08f), Texture2D.whiteTexture);
+            }
+            if (name.Contains("LASER") || name.Contains("ENERGY"))
+            {
+                GUI.color = Color.white;
+                GUI.DrawTexture(new Rect(bodyX + rect.width * 0.15f, rect.y + rect.height * 0.405f, rect.width * bodyLength * 0.62f, 4f), Texture2D.whiteTexture);
+            }
+        }
         GUI.color = Color.white;
     }
 
