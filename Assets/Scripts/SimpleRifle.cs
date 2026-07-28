@@ -49,6 +49,8 @@ public sealed class SimpleRifle : MonoBehaviour
     private readonly int[] slotSelections = { 0, 0, 0, 0 };
     private readonly int[] builtVariants = { -1, -1, -1, -1 };
     private int currentSlot;
+    private const string SavedClassKey = "PrototypeFPS.Loadout.Class";
+    private const string SavedSlotKeyPrefix = "PrototypeFPS.Loadout.Slot.";
     private static readonly string[][] SlotWeaponNames =
     {
         new[] { "ASSAULT RIFLE", "ROCKET LAUNCHER", "SHOTGUN", "MINIGUN", "GRENADE LAUNCHER", "STICKYBOMB LAUNCHER", "SNIPER RIFLE", "BURST RIFLE", "HEAVY CANNON", "ARC SHOOTER", "INCENDIARY LAUNCHER", "SMG", "BOLT-ACTION RIFLE", "LASER RIFLE", "BOW AND ARROW", "SPRAYER", "SKYFIRE CARBINE" },
@@ -138,7 +140,7 @@ public sealed class SimpleRifle : MonoBehaviour
         CreateWeaponModels();
         CreateShotEffects();
         CreateScopeMask();
-        SetPlayerClass(CurrentClass);
+        LoadSavedLoadout();
     }
 
     private void OnEnable()
@@ -247,6 +249,8 @@ public sealed class SimpleRifle : MonoBehaviour
             sniperAmmo = ammunition[weaponIndex];
             sniperReserveAmmo = weaponIndex == 0 ? 24 : 0;
         }
+        PlayerPrefs.SetInt(SavedSlotKeyPrefix + slotIndex, weaponIndex);
+        PlayerPrefs.Save();
         FindAnyObjectByType<WaveManager>()?.SaveProgress();
     }
 
@@ -357,6 +361,7 @@ public sealed class SimpleRifle : MonoBehaviour
         if (CurrentClass == PlayerClass.Scout && playerClass != PlayerClass.Scout)
             energyDrinkUntil = 0f;
         CurrentClass = playerClass;
+        PlayerPrefs.SetInt(SavedClassKey, (int)CurrentClass);
         GetComponent<PlayerVitals>().ApplyClassStats(CurrentClass);
         for (int slot = 0; slot < 4; slot++)
         {
@@ -364,7 +369,26 @@ public sealed class SimpleRifle : MonoBehaviour
             if (System.Array.IndexOf(allowed, slotSelections[slot]) < 0)
                 SetLoadoutSlot(slot, allowed[0]);
         }
+        PlayerPrefs.Save();
         SelectSlot(currentSlot);
+    }
+
+    private void LoadSavedLoadout()
+    {
+        int savedClass = Mathf.Clamp(
+            PlayerPrefs.GetInt(SavedClassKey, (int)PlayerClass.Soldier),
+            0,
+            System.Enum.GetValues(typeof(PlayerClass)).Length - 1);
+        CurrentClass = (PlayerClass)savedClass;
+
+        for (int slot = 0; slot < slotSelections.Length; slot++)
+        {
+            int fallback = ClassLoadouts[(int)CurrentClass][slot][0];
+            int savedWeapon = PlayerPrefs.GetInt(SavedSlotKeyPrefix + slot, fallback);
+            slotSelections[slot] = Mathf.Clamp(savedWeapon, 0, SlotWeaponNames[slot].Length - 1);
+        }
+
+        SetPlayerClass(CurrentClass);
     }
 
     private void SelectSlot(int slotIndex)
@@ -1636,6 +1660,9 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         GameObject tracer = new GameObject("Bullet Tracer");
         LineRenderer line = tracer.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.alignment = LineAlignment.View;
+        line.textureMode = LineTextureMode.Stretch;
         line.material = tracerMaterial;
         line.positionCount = 2;
         line.startWidth = 0.012f;
@@ -1651,6 +1678,9 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         GameObject tracer = new GameObject("Special Weapon Tracer");
         LineRenderer line = tracer.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.alignment = LineAlignment.View;
+        line.textureMode = LineTextureMode.Stretch;
         line.material = tracerMaterial;
         line.positionCount = 2;
         line.startWidth = width;

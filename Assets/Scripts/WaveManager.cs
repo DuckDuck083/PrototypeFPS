@@ -15,7 +15,9 @@ public sealed class WaveManager : MonoBehaviour
     {
         ClearEnemies();
         running = true;
-        StartWave(Mathf.Max(1, PlayerPrefs.GetInt(SavedWaveKey, 1)));
+        // A new Classic match must always begin at wave one. Loading the last
+        // active wave here made freshly started matches appear to skip at random.
+        StartWave(1);
     }
 
     public void StopMode()
@@ -82,7 +84,9 @@ public sealed class WaveManager : MonoBehaviour
         for (int attempt = 0; attempt < 12; attempt++)
         {
             float angle = (index * 83f + attempt * 31f + Random.Range(-18f, 18f)) * Mathf.Deg2Rad;
-            float distance = Random.Range(26f, 70f);
+            // Keep initial enemies close enough to engage promptly while still
+            // leaving the player a short preparation window.
+            float distance = Random.Range(22f, 48f);
             Vector3 position = new Vector3(Mathf.Sin(angle) * distance, 0f, Mathf.Cos(angle) * distance);
             if (!Physics.CheckCapsule(position + Vector3.up * 0.7f, position + Vector3.up * 2f, 0.55f, ~0, QueryTriggerInteraction.Ignore))
                 return position;

@@ -136,8 +136,13 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
 
         UpdateSupportAbility();
 
-        if (!followsPlayer || player == null)
+        if (!followsPlayer)
             return;
+        if (player == null)
+        {
+            player = FindAnyObjectByType<PlayerVitals>();
+            if (player == null) return;
+        }
 
         if (aggroTurret == null) turretThreat = 0f;
         Transform attackTarget = aggroTurret != null ? aggroTurret.transform
@@ -155,7 +160,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             : archetype == EnemyArchetype.Officer ? 13f
             : usesRangedWeapon ? (usesRifle ? 14f : 10f)
             : archetype == EnemyArchetype.Knife ? 1.7f : 1.35f;
-        if (distance > desiredRange)
+        bool hasLineOfSight = !usesRangedWeapon || HasLineOfSight(attackTarget);
+        if (distance > desiredRange || (usesRangedWeapon && !hasLineOfSight))
         {
             if (guardsPost)
             {
@@ -184,7 +190,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
                 nextAttackTime = Time.time + (archetype == EnemyArchetype.Tank ? 3.2f : 2f);
                 return;
             }
-            if (!usesRangedWeapon || HasLineOfSight(attackTarget))
+            if (hasLineOfSight)
             {
                 if (archetype == EnemyArchetype.Demolition)
                     LaunchBomb(attackTarget);
@@ -352,6 +358,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         }
         GameObject tracer = new GameObject("Enemy Bullet Tracer");
         LineRenderer line = tracer.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.alignment = LineAlignment.View;
+        line.textureMode = LineTextureMode.Stretch;
         line.positionCount = 2;
         line.startWidth = archetype == EnemyArchetype.Pyro ? 0.16f : archetype == EnemyArchetype.Tank ? 0.035f : 0.018f;
         line.endWidth = archetype == EnemyArchetype.Pyro ? 0.05f : 0.004f;
