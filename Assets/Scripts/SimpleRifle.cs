@@ -1625,9 +1625,8 @@ public sealed class SimpleRifle : MonoBehaviour
         gunshotAudio.playOnAwake = false;
         gunshotAudio.spatialBlend = 0f;
         gunshotClip = CreateGunshotClip();
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-        tracerMaterial = new Material(shader) { color = new Color(1f, 0.75f, 0.25f) };
-        bulletHoleMaterial = new Material(shader) { color = new Color(0.025f, 0.02f, 0.015f) };
+        tracerMaterial = RuntimeMaterials.Unlit(new Color(1f, 0.75f, 0.25f));
+        bulletHoleMaterial = RuntimeMaterials.Unlit(new Color(0.025f, 0.02f, 0.015f));
     }
 
     private static AudioClip CreateGunshotClip()
@@ -1649,9 +1648,7 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private static Material CreateMaterial(Color color)
     {
-        Material material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        material.color = color;
-        return material;
+        return RuntimeMaterials.Lit(color);
     }
 
     private Vector3 MuzzlePosition => currentModel.TransformPoint(new Vector3(0f, 0.02f, currentWeapon == WeaponType.Sniper ? 1.27f : currentWeapon == WeaponType.Rifle ? 0.86f : 0.59f));

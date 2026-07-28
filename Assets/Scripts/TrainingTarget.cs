@@ -213,7 +213,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         bomb.name = "Enemy Demolition Bomb";
         bomb.transform.position = transform.position + Vector3.up * 1.35f + transform.forward * 0.6f;
         bomb.transform.localScale = Vector3.one * 0.34f;
-        bomb.GetComponent<Renderer>().material = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(1f, 0.16f, 0.02f) };
+        bomb.GetComponent<Renderer>().material = RuntimeMaterials.Unlit(new Color(1f, 0.16f, 0.02f));
         Rigidbody body = bomb.AddComponent<Rigidbody>();
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         Vector3 targetPoint = target.position + Vector3.up * 0.8f;
@@ -364,7 +364,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         line.positionCount = 2;
         line.startWidth = archetype == EnemyArchetype.Pyro ? 0.16f : archetype == EnemyArchetype.Tank ? 0.035f : 0.018f;
         line.endWidth = archetype == EnemyArchetype.Pyro ? 0.05f : 0.004f;
-        line.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        line.material = RuntimeMaterials.Unlit(Color.white);
         line.startColor = archetype == EnemyArchetype.Pyro ? new Color(1f, 0.15f, 0.01f, 0.95f) : new Color(0.35f, 1f, 0.3f, 0.9f);
         line.endColor = archetype == EnemyArchetype.Pyro ? new Color(1f, 0.75f, 0.05f, 0.15f) : new Color(1f, 0.7f, 0.15f, 0.1f);
         line.SetPosition(0, transform.position + Vector3.up * 1.35f + transform.forward * 0.6f);

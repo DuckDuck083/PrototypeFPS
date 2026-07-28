@@ -189,16 +189,12 @@ public sealed class WaveManager : MonoBehaviour
 
     private static Material MakeMaterial(Color color)
     {
-        Material material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        material.color = color;
-        return material;
+        return RuntimeMaterials.Lit(color);
     }
 
     private static Material MakeUnlitMaterial(Color color)
     {
-        Material material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        material.color = color;
-        return material;
+        return RuntimeMaterials.Unlit(color);
     }
 
     private static void AddPart(Transform parent, string partName, PrimitiveType shape, Vector3 position, Vector3 scale, Material material, bool collider = false)
