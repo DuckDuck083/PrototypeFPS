@@ -76,6 +76,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private float grenadePrimeTime;
     private const float GrenadeFuseTime = 2.2f;
     private const int MaximumRocketReserve = 12;
+    public const int RocketMagazineSize = 4;
     private const int MaximumGrenades = 8;
     private float nextDashTime;
     private float dashAnimationUntil;
@@ -97,6 +98,10 @@ public sealed class SimpleRifle : MonoBehaviour
     public float ModeDamageMultiplier { get; set; } = 1f;
     public float PerkDamageMultiplier { get; set; } = 1f;
     public float PerkAmmoPickupMultiplier { get; set; } = 1f;
+    public float ClassDamageMultiplier { get; set; } = 1f;
+    public float ClassDamageTakenMultiplier { get; set; } = 1f;
+    public float ClassMovementMultiplier { get; set; } = 1f;
+    public float ClassReloadMultiplier { get; set; } = 1f;
     public bool HardcoreAmmoRules { get; set; }
     public bool InfiniteAmmo { get; set; }
 
@@ -113,9 +118,10 @@ public sealed class SimpleRifle : MonoBehaviour
         && !isReloading;
     public float MovementMultiplier => (CurrentClass == PlayerClass.Tank ? 0.68f : CurrentClass == PlayerClass.Scout ? 1.38f : 1f)
         * (Time.time < energyDrinkUntil ? 1.32f : 1f)
-        * (currentSlot == 0 && slotSelections[0] == 3 && attackAction.IsPressed() ? 0.62f : 1f);
-    public float DamageTakenMultiplier => Time.time < energyDrinkUntil ? 1.4f : 1f;
-    private float TemporaryDamageMultiplier => Time.time < energyDrinkUntil ? 1.35f : 1f;
+        * (currentSlot == 0 && slotSelections[0] == 3 && attackAction.IsPressed() ? 0.62f : 1f)
+        * ClassMovementMultiplier;
+    public float DamageTakenMultiplier => (Time.time < energyDrinkUntil ? 1.4f : 1f) * ClassDamageTakenMultiplier;
+    private float TemporaryDamageMultiplier => (Time.time < energyDrinkUntil ? 1.35f : 1f) * ClassDamageMultiplier;
     private int CurrentAmmo => currentWeapon == WeaponType.Rifle ? rifleAmmo : currentWeapon == WeaponType.Handgun ? handgunAmmo : sniperAmmo;
     private int CurrentReserve => currentWeapon == WeaponType.Rifle ? rifleReserveAmmo : currentWeapon == WeaponType.Handgun ? handgunReserveAmmo : sniperReserveAmmo;
     private int CurrentMagazineSize => currentWeapon == WeaponType.Rifle ? rifleMagazineSize : currentWeapon == WeaponType.Handgun ? handgunMagazineSize : sniperMagazineSize;
@@ -141,6 +147,8 @@ public sealed class SimpleRifle : MonoBehaviour
         CreateShotEffects();
         CreateScopeMask();
         LoadSavedLoadout();
+        if (GetComponent<ClassAbilityController>() == null)
+            gameObject.AddComponent<ClassAbilityController>();
     }
 
     private void OnEnable()
@@ -228,7 +236,7 @@ public sealed class SimpleRifle : MonoBehaviour
         slotSelections[slotIndex] = weaponIndex;
         if (slotIndex == 0)
         {
-            int[] magazines = { 30, 4, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5, 24, 1, 2, 18 };
+            int[] magazines = { 30, RocketMagazineSize, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5, 24, 1, 2, 18 };
             int[] reserves = { 90, 12, 32, 200, 24, 24, 24, 96, 20, 100, 16, 144, 25, 120, 30, 40, 108 };
             rifleMagazineSize = magazines[weaponIndex];
             rifleAmmo = rifleMagazineSize;
@@ -417,9 +425,18 @@ public sealed class SimpleRifle : MonoBehaviour
             weaponModel.transform.localPosition = new Vector3(0f, -0.08f, 0.28f);
             weaponModel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
             weaponModel.transform.localScale = Vector3.one * 0.7f;
+            weaponModel.SetActive(true);
+            foreach (Renderer modelRenderer in weaponModel.GetComponentsInChildren<Renderer>(true))
+            {
+                modelRenderer.gameObject.SetActive(true);
+                modelRenderer.enabled = true;
+            }
             foreach (Collider modelCollider in weaponModel.GetComponentsInChildren<Collider>(true))
                 Destroy(modelCollider);
-            return;
+            // Keep a compact procedural tube visible even if an imported model's
+            // materials or hierarchy are unavailable in a player build.
+            AddPart(model, "Rocket Tube", new Vector3(0f, 0f, 0.3f), new Vector3(0.24f, 0.24f, 1.15f), metal);
+            AddPart(model, "Rocket Tube Bore", new Vector3(0f, 0.02f, 0.96f), new Vector3(0.1f, 0.1f, 0.28f), dark);
         }
         else if (slotIndex == 0)
         {
@@ -1539,6 +1556,12 @@ public sealed class SimpleRifle : MonoBehaviour
         sniperAmmo += Mathf.CeilToInt(sniperAmmo * Mathf.Max(0f, fraction));
     }
 
+    public void RestockExplosives()
+    {
+        rifleReserveAmmo = Mathf.Min(MaximumRocketReserve, rifleReserveAmmo + RocketMagazineSize);
+        sniperAmmo = Mathf.Min(MaximumGrenades, sniperAmmo + 2);
+    }
+
     private void TryReload()
     {
         bool reloadable = currentSlot == 0
@@ -1554,7 +1577,7 @@ public sealed class SimpleRifle : MonoBehaviour
         sniperScopeToggled = false;
         SetCurrentModelVisible(true);
         playerCamera.fieldOfView = normalFieldOfView;
-        float reloadDuration = 0.9f;
+        float reloadDuration = 0.9f * Mathf.Max(0.35f, ClassReloadMultiplier);
         float elapsed = 0f;
         while (elapsed < reloadDuration)
         {

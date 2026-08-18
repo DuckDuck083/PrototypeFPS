@@ -2,6 +2,7 @@ using UnityEngine;
 
 public sealed class EngineerTurret : MonoBehaviour, IDamageable
 {
+    public enum TurretMode { Suppression, Precision, Overwatch }
     private const float MaximumHealth = 300f;
     private const float Range = 44f;
     private const float FireInterval = 0.14f;
@@ -11,6 +12,15 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
     private Transform head;
     private Transform owner;
     private Material tracerMaterial;
+    public TurretMode Mode { get; private set; }
+    public float HealthFraction => health / MaximumHealth;
+    public string ModeName => Mode.ToString().ToUpperInvariant();
+
+    public void CycleMode()
+    {
+        Mode = (TurretMode)(((int)Mode + 1) % 3);
+        Repair(25f);
+    }
 
     public void Configure(Transform turretHead, Transform turretOwner)
     {
@@ -27,15 +37,17 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
         Vector3 direction = targetPoint - head.position;
         head.rotation = Quaternion.Slerp(head.rotation, Quaternion.LookRotation(direction), 12f * Time.deltaTime);
         if (Time.time < nextShotTime) return;
-        nextShotTime = Time.time + FireInterval;
-        target.TakeDamageFromTurret(Damage, this);
+        float interval = Mode == TurretMode.Suppression ? FireInterval * 0.65f : Mode == TurretMode.Precision ? FireInterval * 1.9f : FireInterval * 1.2f;
+        float damage = Mode == TurretMode.Precision ? Damage * 2.1f : Mode == TurretMode.Overwatch ? Damage * 1.25f : Damage * 0.72f;
+        nextShotTime = Time.time + interval;
+        target.TakeDamageFromTurret(damage, this);
         DrawTracer(targetPoint);
     }
 
     private TrainingTarget FindTarget()
     {
         TrainingTarget best = null;
-        float bestDistance = Range;
+        float bestDistance = Mode == TurretMode.Overwatch ? Range * 1.4f : Range;
         foreach (TrainingTarget candidate in FindObjectsByType<TrainingTarget>())
         {
             if (!candidate.IsAlive || !candidate.IsHostile) continue;
@@ -97,5 +109,6 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
         GUI.color = new Color(0.15f, 0.75f, 1f);
         GUI.DrawTexture(new Rect(bar.x + 1f, bar.y + 1f, 78f * Mathf.Clamp01(health / MaximumHealth), 5f), Texture2D.whiteTexture);
         GUI.color = Color.white;
+        GUI.Label(new Rect(bar.x - 20f, bar.y + 7f, 120f, 20f), ModeName, new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = 10, fontStyle = FontStyle.Bold });
     }
 }

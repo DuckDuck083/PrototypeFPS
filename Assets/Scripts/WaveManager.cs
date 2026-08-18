@@ -10,6 +10,7 @@ public sealed class WaveManager : MonoBehaviour
     private int spawnSequence;
     private float nextReconcileTime;
     private bool running;
+    private string waveEvent = string.Empty;
 
     public void BeginClassic()
     {
@@ -70,6 +71,27 @@ public sealed class WaveManager : MonoBehaviour
         if (wave >= 6) Spawn(TrainingTarget.EnemyArchetype.Pyro, 1 + wave / 8);
         if (wave >= 7) Spawn(TrainingTarget.EnemyArchetype.Scout, 1 + wave / 7);
         if (wave >= 8 && wave % 3 == 2) Spawn(TrainingTarget.EnemyArchetype.Officer, 1);
+        waveEvent = string.Empty;
+        if (wave >= 3 && wave % 3 == 0)
+        {
+            int eventType = Random.Range(0, 3);
+            if (eventType == 0)
+            {
+                waveEvent = "RANDOM EVENT: DEMOLITION RAID";
+                Spawn(TrainingTarget.EnemyArchetype.Demolition, 2);
+            }
+            else if (eventType == 1)
+            {
+                waveEvent = "RANDOM EVENT: SCOUT RUSH";
+                Spawn(TrainingTarget.EnemyArchetype.Scout, 4);
+            }
+            else
+            {
+                waveEvent = "RANDOM EVENT: FORTIFIED ASSAULT";
+                Spawn(TrainingTarget.EnemyArchetype.Engineer, 1);
+                Spawn(TrainingTarget.EnemyArchetype.Tank, 1);
+            }
+        }
     }
 
     private void Spawn(TrainingTarget.EnemyArchetype type, int count)
@@ -185,6 +207,12 @@ public sealed class WaveManager : MonoBehaviour
         GUI.color = Color.white;
         string status = waitingForNextWave ? $"WAVE {CurrentWave} CLEARED" : $"WAVE {CurrentWave}   ENEMIES REMAINING: {EnemiesRemaining}";
         GUI.Label(new Rect(Screen.width * 0.5f - 150f, 46f, 300f, 48f), status, style);
+        if (!string.IsNullOrEmpty(waveEvent))
+        {
+            style.fontSize = 13;
+            style.normal.textColor = new Color(1f, 0.58f, 0.18f);
+            GUI.Label(new Rect(Screen.width * 0.5f - 180f, 96f, 360f, 28f), waveEvent, style);
+        }
     }
 
     private static Material MakeMaterial(Color color)

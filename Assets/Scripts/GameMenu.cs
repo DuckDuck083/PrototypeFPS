@@ -154,7 +154,7 @@ public sealed class GameMenu : MonoBehaviour
         bool subPage = loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || inventoryOpen || reportOpen;
         if (!subPage)
         {
-            float homeContentHeight = Mathf.Max(680f, Screen.height);
+            float homeContentHeight = Mathf.Max(850f, Screen.height);
             homeScroll = GUI.BeginScrollView(
                 new Rect(0f, 115f, Screen.width, Screen.height - 115f),
                 homeScroll,
@@ -218,6 +218,18 @@ public sealed class GameMenu : MonoBehaviour
         money.normal.textColor = new Color(1f, 0.76f, 0.18f);
         GUI.Label(new Rect(profile.x + 28f, profile.y + 190f, profile.width - 56f, 36f), $"◆ {(economy != null ? economy.Money : 0):N0} CREDITS", money);
         GUI.Label(new Rect(profile.x + 28f, profile.y + 244f, profile.width - 56f, 24f), $"SKINS  {(economy != null ? economy.OwnedSkinCount : 0)}    XP BOOST  {(economy != null ? economy.XpBoostMatches : 0)} MATCHES", profileLabel);
+
+        Rect updateLog = new Rect(profile.x, profile.y + profile.height + 18f, profile.width, 190f);
+        GUI.color = new Color(0.035f, 0.065f, 0.09f, 0.96f);
+        GUI.DrawTexture(updateLog, Texture2D.whiteTexture);
+        GUI.color = new Color(1f, 0.55f, 0.16f);
+        GUI.DrawTexture(new Rect(updateLog.x, updateLog.y, 6f, updateLog.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUI.Label(new Rect(updateLog.x + 24f, updateLog.y + 14f, updateLog.width - 48f, 24f), "UPDATE 0.6 — CLASS OPERATIONS", profileLabel);
+        GUIStyle notes = new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = true };
+        notes.normal.textColor = new Color(0.76f, 0.86f, 0.92f);
+        GUI.Label(new Rect(updateLog.x + 24f, updateLog.y + 45f, updateLog.width - 48f, 130f),
+            "• Rocket Launcher: fixed visible model and 4-round magazine\n• Q class abilities: Heavy stance, Recon scan, Assault adrenaline, Specialist EMP\n• Engineer turret modes: Suppression, Precision, Overwatch\n• Demolition field resupply and randomized wave events", notes);
 
         float buttonWidth = Mathf.Min(330f, Screen.width * 0.36f);
         float buttonX = Screen.width - buttonWidth - 42f;
@@ -598,8 +610,8 @@ public sealed class GameMenu : MonoBehaviour
 
     private static void DrawClassShop(EconomyManager economy)
     {
-        string[] names = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE", "SCOUT" };
-        string[] roles = { "Balanced fighter", "Heavy frontline", "Build and defend", "Long-range expert", "Explosives master", "Fast tactical agent", "Black-powder bruiser", "Double-jump speed fighter" };
+        string[] names = { "SOLDIER", "HEAVY", "ENGINEER", "RECON", "DEMOLITION", "SPECIALIST", "PIRATE", "ASSAULT" };
+        string[] roles = { "Balanced fighter", "Armored frontline with a risky stance", "Actively manage turret modes and cover", "Scanning and precision positioning", "Explosives and field resupply", "EMP disruption and gadgets", "Black-powder bruiser", "Adrenaline-driven close assault" };
         float width = Mathf.Min(210f, (Screen.width - 36f) / 3f);
         int maxColumns = Screen.width < 760 ? 3 : 4;
         for (int i = 0; i < names.Length; i++)
@@ -962,7 +974,7 @@ public sealed class GameMenu : MonoBehaviour
 
     private void DrawClassSelector(float startX, float panelWidth, float y)
     {
-        string[] classNames = { "SOLDIER", "TANK", "ENGINEER", "SNIPER", "DEMOMAN", "SPECIAL FORCE", "PIRATE", "SCOUT" };
+        string[] classNames = { "SOLDIER", "HEAVY", "ENGINEER", "RECON", "DEMOLITION", "SPECIALIST", "PIRATE", "ASSAULT" };
         float classWidth = panelWidth / classNames.Length;
         GUI.color = new Color(0.04f, 0.07f, 0.09f, 0.95f);
         GUI.DrawTexture(new Rect(startX - 8f, y, panelWidth + 16f, 76f), Texture2D.whiteTexture);
