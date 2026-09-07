@@ -166,7 +166,8 @@ public sealed class WaveManager : MonoBehaviour
         float speed = type == TrainingTarget.EnemyArchetype.Tank ? 1.2f : type == TrainingTarget.EnemyArchetype.Knife ? 4.1f : type == TrainingTarget.EnemyArchetype.Scout ? 5.8f : type == TrainingTarget.EnemyArchetype.Sniper ? 1.5f : 2.35f;
         float damage = type == TrainingTarget.EnemyArchetype.Sniper ? 45f : type == TrainingTarget.EnemyArchetype.Demolition ? 62f : type == TrainingTarget.EnemyArchetype.Tank ? 6.5f : type == TrainingTarget.EnemyArchetype.Pyro ? 9f : type == TrainingTarget.EnemyArchetype.Scout ? 22f : type == TrainingTarget.EnemyArchetype.Engineer ? 10f : type == TrainingTarget.EnemyArchetype.Officer ? 5f : type == TrainingTarget.EnemyArchetype.Knife ? 14f : type == TrainingTarget.EnemyArchetype.Handgun ? 14f : 6f;
         TrainingTarget target = root.AddComponent<TrainingTarget>();
-        target.Configure(true, (health + (waveEnemy ? CurrentWave * (tank ? 10f : 3f) : 0f)) * healthMultiplier, speed, damage * damageMultiplier);
+        target.Configure(true, (health + (waveEnemy ? CurrentWave * (tank ? 10f : 3f) : 0f)) * healthMultiplier * RunMutators.EnemyHealthMultiplier,
+            speed * RunMutators.EnemySpeedMultiplier, damage * damageMultiplier);
         target.ConfigureWave(waveEnemy ? this : null, type);
         return target;
     }

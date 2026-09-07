@@ -45,6 +45,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private float nextAbilityTime;
     private float officerBuffUntil;
     private EnemyTurret engineerTurret;
+    private SimpleRifle lastPlayerWeapon;
+    private int lastPlayerSlot;
+    private int lastPlayerWeaponIndex;
     public float HealthRatio => maximumHealth <= 0f ? 0f : health / maximumHealth;
 
     public void Configure(bool shouldFollowPlayer, float healthAmount = 100f, float speed = 2.3f, float damage = 5f)
@@ -380,6 +383,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         health -= amount;
         if (health <= 0f)
         {
+            lastPlayerWeapon?.RecordWeaponKill(lastPlayerSlot, lastPlayerWeaponIndex);
             FindAnyObjectByType<GameModeManager>()?.RecordEnemyKill();
             if (followsPlayer) EconomyManager.Instance?.RewardEnemy(archetype);
             dead = true;
@@ -398,6 +402,14 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         turretThreat += amount;
         if (turretThreat >= 32f) aggroTurret = turret;
         TakeDamage(amount);
+    }
+
+    public void MarkPlayerDamage(SimpleRifle weapon)
+    {
+        lastPlayerWeapon = weapon;
+        if (weapon == null) return;
+        lastPlayerSlot = weapon.CurrentLoadoutSlot;
+        lastPlayerWeaponIndex = weapon.CurrentLoadoutWeapon;
     }
 
     public void Stun(float duration)

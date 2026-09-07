@@ -15,13 +15,14 @@ public sealed class EconomyManager : MonoBehaviour
     public string LastNotification { get; private set; }
     private float notificationUntil;
 
-    public static readonly string[] PerkNames = { "SPRINTER", "ARMOR PLATING", "HIGH CALIBER", "FIELD MEDIC", "MARATHON", "SCAVENGER", "BOUNTY CHIP", "SECOND WIND" };
+    public static readonly string[] PerkNames = { "SPRINTER", "ARMOR PLATING", "HIGH CALIBER", "FIELD MEDIC", "MARATHON", "SCAVENGER", "BOUNTY CHIP", "SECOND WIND", "VAMPIRE", "GUNSLINGER", "RAPID FIRE" };
     public static readonly string[] PerkDescriptions =
     {
         "+15% movement speed", "15% less incoming damage", "+12% weapon damage", "Regenerate 1 health per second",
-        "Stamina drains 25% slower", "+25% ammo from pickups", "+20% enemy bounty credits", "+20 maximum health"
+        "Stamina drains 25% slower", "+25% ammo from pickups", "+20% enemy bounty credits", "+20 maximum health",
+        "Heal 8 health on weapon kills", "+20% secondary weapon damage", "Weapons fire 15% faster"
     };
-    public static readonly int[] PerkPrices = { 650, 800, 900, 750, 700, 725, 1000, 850 };
+    public static readonly int[] PerkPrices = { 650, 800, 900, 750, 700, 725, 1000, 850, 1100, 950, 1250 };
     public static readonly int[] ModePrices = { 0, 0, 900, 1100, 1600, 1300 };
     public static readonly int[] ClassPrices = { 0, 700, 750, 800, 850, 1100, 1200, 950 };
     public static readonly string[] LootNames = { "FIELD MEDKIT", "AMMO SATCHEL", "TRAUMA PLATE", "ADRENALINE" };
@@ -160,7 +161,7 @@ public sealed class EconomyManager : MonoBehaviour
     public void BeginMatch() { matchActive = true; pendingCredits = 0; }
     public void SettleMatch(float multiplier)
     {
-        int payout = Mathf.RoundToInt(pendingCredits * Mathf.Clamp01(multiplier));
+        int payout = Mathf.RoundToInt(pendingCredits * Mathf.Clamp01(multiplier) * RunMutators.MoneyMultiplier);
         matchActive = false;
         pendingCredits = 0;
         if (XpBoostMatches > 0)
@@ -241,6 +242,7 @@ public sealed class EconomyManager : MonoBehaviour
         {
             PlayerPrefs.DeleteKey($"PrototypeFPS.Unlock.Weapon.{slot}.{weapon}");
             PlayerPrefs.DeleteKey($"PrototypeFPS.WeaponSkin.{slot}.{weapon}");
+            PlayerPrefs.DeleteKey($"PrototypeFPS.Mastery.{slot}.{weapon}");
         }
         for (int i = 0; i < SkinNames.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.Skin.{i}");
         for (int i = 1; i < EnemySkinNames.Length; i++) PlayerPrefs.DeleteKey($"PrototypeFPS.EnemySkin.{i}");
@@ -334,7 +336,7 @@ public sealed class EconomyManager : MonoBehaviour
 
     public void AddExperience(int amount)
     {
-        int gained = Mathf.Max(0, amount) * (XpBoostMatches > 0 ? 2 : 1);
+        int gained = Mathf.RoundToInt(Mathf.Max(0, amount) * (XpBoostMatches > 0 ? 2 : 1) * (matchActive ? RunMutators.XpMultiplier : 1f));
         if (gained == 0) return;
         int previousRank = RankIndex;
         Experience += gained;
@@ -442,7 +444,14 @@ public sealed class EconomyManager : MonoBehaviour
             vitals.PerkBonusHealth = IsPerkUnlocked(7) ? 20f : 0f;
         }
         SimpleRifle rifle = FindAnyObjectByType<SimpleRifle>();
-        if (rifle != null) { rifle.PerkDamageMultiplier = IsPerkUnlocked(2) ? 1.12f : 1f; rifle.PerkAmmoPickupMultiplier = IsPerkUnlocked(5) ? 1.25f : 1f; }
+        if (rifle != null)
+        {
+            rifle.PerkDamageMultiplier = IsPerkUnlocked(2) ? 1.12f : 1f;
+            rifle.PerkAmmoPickupMultiplier = IsPerkUnlocked(5) ? 1.25f : 1f;
+            rifle.PerkVampireHealing = IsPerkUnlocked(8) ? 8f : 0f;
+            rifle.PerkSecondaryDamageMultiplier = IsPerkUnlocked(9) ? 1.2f : 1f;
+            rifle.PerkRapidFireMultiplier = IsPerkUnlocked(10) ? 1.15f : 1f;
+        }
     }
 
     private void OnGUI()

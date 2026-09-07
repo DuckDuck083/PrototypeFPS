@@ -89,7 +89,10 @@ public sealed class ExplosiveProjectile : MonoBehaviour
                 if (damageable is PlayerVitals playerVitals)
                     playerVitals.TakeExplosiveDamage(dealtDamage, transform.position);
                 else
+                {
+                    (damageable as TrainingTarget)?.MarkPlayerDamage(owner);
                     damageable.TakeDamage(dealtDamage);
+                }
                 totalDamage += dealtDamage;
             }
         }

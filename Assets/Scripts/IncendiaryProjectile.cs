@@ -30,6 +30,7 @@ public sealed class IncendiaryProjectile : MonoBehaviour
         {
             TrainingTarget target = hit.GetComponentInParent<TrainingTarget>();
             if (target == null || !target.IsHostile || !damaged.Add(target)) continue;
+            target.MarkPlayerDamage(owner);
             target.TakeDamage(8f);
             total += 8f;
         }

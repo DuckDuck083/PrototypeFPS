@@ -43,6 +43,7 @@ public sealed class ArenaPickup : MonoBehaviour
         }
         else
         {
+            if (RunMutators.NoAmmoPickups) return;
             SimpleRifle weapons = other.GetComponent<SimpleRifle>();
             collected = weapons != null && weapons.AddReserveAmmo(2, 0, 2);
         }

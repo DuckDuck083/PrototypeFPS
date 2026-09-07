@@ -15,6 +15,9 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
     public TurretMode Mode { get; private set; }
     public float HealthFraction => health / MaximumHealth;
     public string ModeName => Mode.ToString().ToUpperInvariant();
+    public string ModeDescription => Mode == TurretMode.Suppression ? "SUPPRESSION - FAST FIRE"
+        : Mode == TurretMode.Precision ? "PRECISION - HIGH DAMAGE"
+        : "OVERWATCH - LONG RANGE";
 
     public void CycleMode()
     {
@@ -40,6 +43,7 @@ public sealed class EngineerTurret : MonoBehaviour, IDamageable
         float interval = Mode == TurretMode.Suppression ? FireInterval * 0.65f : Mode == TurretMode.Precision ? FireInterval * 1.9f : FireInterval * 1.2f;
         float damage = Mode == TurretMode.Precision ? Damage * 2.1f : Mode == TurretMode.Overwatch ? Damage * 1.25f : Damage * 0.72f;
         nextShotTime = Time.time + interval;
+        target.MarkPlayerDamage(owner != null ? owner.GetComponent<SimpleRifle>() : null);
         target.TakeDamageFromTurret(damage, this);
         DrawTracer(targetPoint);
     }

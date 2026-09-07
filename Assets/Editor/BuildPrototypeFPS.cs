@@ -6,7 +6,7 @@ using UnityEngine;
 
 public static class BuildPrototypeFPS
 {
-    private const string OutputDirectory = "FPS game build 0.5v";
+    private const string OutputDirectory = "FPS game build 0.6v";
     private const string ExecutablePath = OutputDirectory + "/PrototypeFPS.exe";
 
     [MenuItem("Build/Build Clean Windows Player")]

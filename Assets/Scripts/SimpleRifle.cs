@@ -98,6 +98,9 @@ public sealed class SimpleRifle : MonoBehaviour
     public float ModeDamageMultiplier { get; set; } = 1f;
     public float PerkDamageMultiplier { get; set; } = 1f;
     public float PerkAmmoPickupMultiplier { get; set; } = 1f;
+    public float PerkVampireHealing { get; set; }
+    public float PerkSecondaryDamageMultiplier { get; set; } = 1f;
+    public float PerkRapidFireMultiplier { get; set; } = 1f;
     public float ClassDamageMultiplier { get; set; } = 1f;
     public float ClassDamageTakenMultiplier { get; set; } = 1f;
     public float ClassMovementMultiplier { get; set; } = 1f;
@@ -190,6 +193,8 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void Update()
     {
+        if (PerkRapidFireMultiplier > 1f && nextShotTime > Time.time)
+            nextShotTime -= Time.deltaTime * (PerkRapidFireMultiplier - 1f);
         if (InfiniteAmmo)
         {
             rifleAmmo = rifleMagazineSize;
@@ -281,6 +286,24 @@ public sealed class SimpleRifle : MonoBehaviour
     }
 
     public int GetLoadoutSlotIndex(int slotIndex) => slotIndex >= 0 && slotIndex < 4 ? slotSelections[slotIndex] : 0;
+    public int CurrentLoadoutSlot => currentSlot;
+    public int CurrentLoadoutWeapon => slotSelections[currentSlot];
+
+    public int GetWeaponKills(int slot, int weapon) => PlayerPrefs.GetInt($"PrototypeFPS.Mastery.{slot}.{weapon}", 0);
+
+    public string GetWeaponMastery(int slot, int weapon)
+    {
+        int kills = GetWeaponKills(slot, weapon);
+        return kills >= 250 ? "MASTER" : kills >= 100 ? "VETERAN" : kills >= 25 ? "TRAINED" : "ROOKIE";
+    }
+
+    public void RecordWeaponKill(int slot, int weapon)
+    {
+        string key = $"PrototypeFPS.Mastery.{slot}.{weapon}";
+        PlayerPrefs.SetInt(key, PlayerPrefs.GetInt(key, 0) + 1);
+        PlayerPrefs.Save();
+        if (PerkVampireHealing > 0f) GetComponent<PlayerVitals>()?.Heal(PerkVampireHealing);
+    }
 
     public string GetLoadoutOptionName(int slotIndex, int optionIndex)
     {
@@ -809,6 +832,8 @@ public sealed class SimpleRifle : MonoBehaviour
             float falloff = critical || miniCritical ? 1f : GetDamageFalloff(hit.distance);
             float dealt = (critical ? damage * 3f : miniCritical ? damage * 1.35f : damage) * falloff
                 * ModeDamageMultiplier * PerkDamageMultiplier * TemporaryDamageMultiplier;
+            if (currentSlot == 1) dealt *= PerkSecondaryDamageMultiplier;
+            hit.collider.GetComponentInParent<TrainingTarget>()?.MarkPlayerDamage(this);
             target.TakeDamage(dealt);
             FindAnyObjectByType<GameModeManager>()?.RecordDamage(dealt);
             lastDamageAmount = dealt;
@@ -916,6 +941,7 @@ public sealed class SimpleRifle : MonoBehaviour
             TrainingTarget first = hit.collider.GetComponentInParent<TrainingTarget>();
             if (first != null)
             {
+                first.MarkPlayerDamage(this);
                 first.TakeDamage(28f);
                 lastDamageAmount = 28f;
                 hitMarkerUntil = Time.time + 0.35f;
@@ -924,6 +950,7 @@ public sealed class SimpleRifle : MonoBehaviour
                 {
                     TrainingTarget chainedTarget = nearby.GetComponentInParent<TrainingTarget>();
                     if (chainedTarget == null || ReferenceEquals(chainedTarget, first)) continue;
+                    chainedTarget.MarkPlayerDamage(this);
                     chainedTarget.TakeDamage(18f);
                     CreateArcLine(hit.point, nearby.ClosestPoint(hit.point));
                     if (++chained >= 2) break;
@@ -963,6 +990,7 @@ public sealed class SimpleRifle : MonoBehaviour
             TrainingTarget target = hit.collider.GetComponentInParent<TrainingTarget>();
             if (target != null)
             {
+                target.MarkPlayerDamage(this);
                 target.TakeDamage(10f);
                 target.ApplyPoison(6f, 6f);
                 lastDamageAmount = 10f;
@@ -1464,6 +1492,8 @@ public sealed class SimpleRifle : MonoBehaviour
         float falloff = critical || ignoresFalloff ? 1f : GetDamageFalloff(hit.distance);
         float finalDamage = (critical ? baseDamage * 3f : baseDamage) * falloff;
         float dealt = finalDamage * ModeDamageMultiplier * PerkDamageMultiplier * TemporaryDamageMultiplier;
+        if (currentSlot == 1) dealt *= PerkSecondaryDamageMultiplier;
+        hit.collider.GetComponentInParent<TrainingTarget>()?.MarkPlayerDamage(this);
         damageable.TakeDamage(dealt);
         FindAnyObjectByType<GameModeManager>()?.RecordDamage(dealt);
 

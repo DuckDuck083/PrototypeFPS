@@ -143,7 +143,7 @@ public sealed class GameMenu : MonoBehaviour
 
         GUIStyle title = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 44, fontStyle = FontStyle.Bold };
         title.normal.textColor = new Color(0.3f, 0.78f, 1f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || inventoryOpen || reportOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS", title);
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, loadoutOpen || playModeOpen || shopOpen || questsOpen || promoOpen || adminOpen || settingsOpen || inventoryOpen || reportOpen ? 18f : 70f, 600f, 70f), "PROTOTYPE FPS  //  0.6", title);
 
         if (confirmQuitMatch)
         {
@@ -166,7 +166,7 @@ public sealed class GameMenu : MonoBehaviour
             return;
         }
 
-        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : inventoryOpen ? 760f : adminOpen ? 720f : loadoutOpen ? 640f : 610f;
+        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : inventoryOpen ? 760f : adminOpen ? 720f : loadoutOpen ? 640f : playModeOpen ? 820f : 610f;
         Rect viewport = new Rect(0f, 0f, Screen.width, Screen.height);
         Rect content = new Rect(0f, 0f, Mathf.Max(760f, Screen.width - 18f), Mathf.Max(contentHeight, Screen.height));
         pageScroll = GUI.BeginScrollView(viewport, pageScroll, content, false, true);
@@ -365,6 +365,21 @@ public sealed class GameMenu : MonoBehaviour
                 GUI.Label(new Rect(card.x, card.y + 130f, card.width, 24f), $"LOCKED  ◆ {EconomyManager.ModePrices[i]}", locked);
             }
         }
+
+        Rect mutators = new Rect(Screen.width * 0.5f - 360f, 515f, 720f, 230f);
+        GUI.color = new Color(0.035f, 0.055f, 0.075f, 0.97f);
+        GUI.DrawTexture(mutators, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUI.Label(new Rect(mutators.x, mutators.y + 12f, mutators.width, 30f), "RUN MUTATORS - STACK FOR BIGGER REWARDS", CenteredStyle(17));
+        RunMutators.DoubleEnemyHealth = GUI.Toggle(new Rect(mutators.x + 28f, mutators.y + 52f, 320f, 28f), RunMutators.DoubleEnemyHealth, " Enemies have double health  (+25% money)");
+        RunMutators.HalfPlayerHealth = GUI.Toggle(new Rect(mutators.x + 370f, mutators.y + 52f, 320f, 28f), RunMutators.HalfPlayerHealth, " Player has half health  (+50% XP)");
+        RunMutators.FasterEnemies = GUI.Toggle(new Rect(mutators.x + 28f, mutators.y + 91f, 320f, 28f), RunMutators.FasterEnemies, " Faster enemies  (+30% money)");
+        RunMutators.NoAmmoPickups = GUI.Toggle(new Rect(mutators.x + 370f, mutators.y + 91f, 320f, 28f), RunMutators.NoAmmoPickups, " No ammo pickups  (+40% money)");
+        GUIStyle bonus = CenteredStyle(15);
+        bonus.normal.textColor = new Color(1f, 0.76f, 0.2f);
+        GUI.Label(new Rect(mutators.x, mutators.y + 145f, mutators.width, 30f),
+            $"ACTIVE RUN BONUS: +{Mathf.RoundToInt((RunMutators.MoneyMultiplier - 1f) * 100f)}% MONEY   +{Mathf.RoundToInt((RunMutators.XpMultiplier - 1f) * 100f)}% XP", bonus);
+        GUI.Label(new Rect(mutators.x, mutators.y + 180f, mutators.width, 26f), "Select mutators, then choose a mode above to start.", CenteredStyle(12));
 
         if (GUI.Button(new Rect(18f, 18f, 120f, 40f), "BACK")) playModeOpen = false;
     }
@@ -611,7 +626,7 @@ public sealed class GameMenu : MonoBehaviour
     private static void DrawClassShop(EconomyManager economy)
     {
         string[] names = { "SOLDIER", "HEAVY", "ENGINEER", "RECON", "DEMOLITION", "SPECIALIST", "PIRATE", "ASSAULT" };
-        string[] roles = { "Balanced fighter", "Armored frontline with a risky stance", "Actively manage turret modes and cover", "Scanning and precision positioning", "Explosives and field resupply", "EMP disruption and gadgets", "Black-powder bruiser", "Adrenaline-driven close assault" };
+        string[] roles = { "Balanced fighter", "Armored frontline", "Change turret modes with Q", "Precision positioning", "Explosives specialist", "Advanced weapons and gadgets", "Black-powder bruiser", "Fast close assault" };
         float width = Mathf.Min(210f, (Screen.width - 36f) / 3f);
         int maxColumns = Screen.width < 760 ? 3 : 4;
         for (int i = 0; i < names.Length; i++)
@@ -656,7 +671,8 @@ public sealed class GameMenu : MonoBehaviour
             string description = weapons.GetLoadoutOptionDescription(weaponShopSlot, i);
             if (!string.IsNullOrEmpty(description))
                 GUI.Label(new Rect(card.x + 8f, card.y + 39f, card.width - 16f, 28f), description, CenteredStyle(10));
-            if (owned) GUI.Label(new Rect(card.x, card.y + 76f, card.width, 28f), "OWNED", CenteredStyle(12));
+            if (owned)
+                GUI.Label(new Rect(card.x, card.y + 71f, card.width, 34f), $"{weapons.GetWeaponMastery(weaponShopSlot, i)}  |  {weapons.GetWeaponKills(weaponShopSlot, i)} KILLS", CenteredStyle(11));
             else if (GUI.Button(new Rect(card.x + 15f, card.y + 72f, card.width - 30f, 32f), $"BUY  ◆ {economy.WeaponPrice(weaponShopSlot, i)}")) economy.BuyWeapon(weaponShopSlot, i, name);
         }
     }

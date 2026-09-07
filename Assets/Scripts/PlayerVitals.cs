@@ -13,6 +13,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
     public bool CanSprint => Stamina > 0.1f;
     public bool IsDead => isDead;
     private float modeHealthMultiplier = 1f;
+    private float runHealthMultiplier = 1f;
     private float healthRegeneration;
     public float PerkDamageReduction { get; set; }
     public float PerkRegeneration { get; set; }
@@ -32,6 +33,7 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
             : playerClass == SimpleRifle.PlayerClass.Pirate ? 140f
             : 100f;
         maximumHealth = maximumHealth * modeHealthMultiplier + PerkBonusHealth;
+        runHealthMultiplier = 1f;
         Health = maximumHealth;
     }
 
@@ -143,6 +145,13 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
         Stamina = maximumStamina;
         CharacterController controller = GetComponent<CharacterController>();
         if (controller != null && !controller.enabled) controller.enabled = true;
+    }
+
+    public void ApplyRunMutatorHealth()
+    {
+        maximumHealth = maximumHealth / Mathf.Max(0.1f, runHealthMultiplier) * RunMutators.PlayerHealthMultiplier;
+        runHealthMultiplier = RunMutators.PlayerHealthMultiplier;
+        Health = maximumHealth;
     }
 
     public void AddMaximumHealth(float amount)
