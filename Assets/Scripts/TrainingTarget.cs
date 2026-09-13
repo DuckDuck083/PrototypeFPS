@@ -42,6 +42,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
     private bool destroyAfterDefeat;
     private DestructibleObjective attackObjective;
     private float verticalVelocity;
+    private int frostStacks;
+    private float frostStackExpires;
+    private float frozenUntil;
     private float nextAbilityTime;
     private float officerBuffUntil;
     private EnemyTurret engineerTurret;
@@ -135,7 +138,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             nextPoisonTick = Time.time + 1f;
             TakeDamage(poisonDamage);
         }
-        if (Time.time < stunnedUntil) return;
+        if (Time.time >= frostStackExpires) frostStacks = 0;
+        if (Time.time < stunnedUntil || Time.time < frozenUntil) return;
 
         UpdateSupportAbility();
 
@@ -148,8 +152,9 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         }
 
         if (aggroTurret == null) turretThreat = 0f;
+        bool playerIsClose = player != null && Vector3.Distance(transform.position, player.transform.position) < 15f;
         Transform attackTarget = aggroTurret != null ? aggroTurret.transform
-            : attackObjective != null && !attackObjective.IsDestroyed ? attackObjective.transform
+            : attackObjective != null && !attackObjective.IsDestroyed && !playerIsClose ? attackObjective.transform
             : player.transform;
         Vector3 offset = attackTarget.position - transform.position;
         offset.y = 0f;
@@ -240,7 +245,8 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             verticalVelocity = 6.2f;
 
         verticalVelocity += Physics.gravity.y * Time.deltaTime;
-        float buffedSpeed = moveSpeed * (Time.time < officerBuffUntil ? 1.2f : 1f);
+        float frostMultiplier = Mathf.Max(0.45f, 1f - frostStacks * 0.12f);
+        float buffedSpeed = moveSpeed * (Time.time < officerBuffUntil ? 1.2f : 1f) * frostMultiplier;
         controller.Move((direction * buffedSpeed + Vector3.up * verticalVelocity) * Time.deltaTime);
     }
 
@@ -297,6 +303,10 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         if (!Physics.SphereCast(origin, 0.38f, desired, out RaycastHit obstacle, 1.4f, ~0, QueryTriggerInteraction.Ignore)
             || obstacle.collider.transform.root == transform)
             return desired;
+        // Commit to low cover so MoveCharacter can jump it instead of endlessly
+        // steering around crates and sandbags.
+        if (controller.isGrounded && obstacle.collider.bounds.max.y - transform.position.y <= 2.05f)
+            return desired;
         Vector3 side = Vector3.Cross(Vector3.up, desired) * steeringSign;
         return (side + desired * 0.25f).normalized;
     }
@@ -309,7 +319,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             lastProgressTime = Time.time;
             return;
         }
-        if (Time.time < lastProgressTime + 6f) return;
+        if (Time.time < lastProgressTime + 2.75f) return;
         Vector3 recovery = player.transform.position + Vector3.forward * 17f;
         for (int attempt = 0; attempt < 10; attempt++)
         {
@@ -381,6 +391,7 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
             return;
 
         health -= amount;
+        if (Time.time < frozenUntil) frozenUntil = Time.time;
         if (health <= 0f)
         {
             lastPlayerWeapon?.RecordWeaponKill(lastPlayerSlot, lastPlayerWeaponIndex);
@@ -422,6 +433,17 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
         poisonUntil = Mathf.Max(poisonUntil, Time.time + duration);
         poisonDamage = Mathf.Max(poisonDamage, damagePerSecond);
         nextPoisonTick = Mathf.Min(nextPoisonTick, Time.time + 0.25f);
+    }
+
+    public void ApplyFrost(int stacks)
+    {
+        frostStacks = Mathf.Clamp(frostStacks + Mathf.Max(1, stacks), 0, 5);
+        frostStackExpires = Time.time + 4f;
+        if (frostStacks >= 5)
+        {
+            frozenUntil = Time.time + 2.25f;
+            frostStacks = 0;
+        }
     }
 
     private void RemoveBulletHoles()

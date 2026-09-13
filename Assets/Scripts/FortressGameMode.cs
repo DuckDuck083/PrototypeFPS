@@ -12,8 +12,10 @@ public sealed class FortressGameMode : GameModeBase
     public override void Begin(GameModeManager manager)
     {
         base.Begin(manager);
-        playerFortress = CreateFortress("Player Fortress", new Vector3(0f, 2f, -55f), new Color(0.08f, 0.45f, 0.9f));
-        enemyFortress = CreateFortress("Enemy Fortress", new Vector3(0f, 2f, 55f), new Color(0.85f, 0.12f, 0.08f));
+        // Keep both objectives in the central combat lanes. The old player fort at
+        // z=-55 was hidden behind the command center at z=-43.
+        playerFortress = CreateFortress("Player Fortress", new Vector3(0f, 2f, -22f), new Color(0.08f, 0.45f, 0.9f));
+        enemyFortress = CreateFortress("Enemy Fortress", new Vector3(0f, 2f, 48f), new Color(0.85f, 0.12f, 0.08f));
         playerFortress.Destroyed += _ => Manager.Finish(false, "your fortress was destroyed");
         enemyFortress.Destroyed += _ => Manager.Finish(true, "enemy fortress destroyed");
         for (int i = 0; i < 10; i++) SpawnDefender(i);
@@ -37,24 +39,20 @@ public sealed class FortressGameMode : GameModeBase
     {
         TrainingTarget.EnemyArchetype type;
         Vector3 position;
-        bool guard;
         if (index == 0)
         {
             type = TrainingTarget.EnemyArchetype.Tank;
-            position = new Vector3(0f, 4.2f, 55f);
-            guard = true;
+            position = new Vector3(0f, 0f, 40f);
         }
         else if (index < 4)
         {
             type = TrainingTarget.EnemyArchetype.Rifle;
-            position = new Vector3(-10f + (index - 1) * 10f, 0f, 43f);
-            guard = true;
+            position = new Vector3(-12f + (index - 1) * 12f, 0f, 38f);
         }
         else if (index < 7)
         {
             type = TrainingTarget.EnemyArchetype.Sniper;
-            position = new Vector3(-12f + (index - 4) * 12f, 0f, 49f);
-            guard = true;
+            position = new Vector3(-14f + (index - 4) * 14f, 0f, 44f);
         }
         else
         {
@@ -64,11 +62,11 @@ public sealed class FortressGameMode : GameModeBase
             };
             type = scattered[index - 7];
             position = new Vector3(Random.Range(-22f, 23f), 0f, Random.Range(28f, 48f));
-            guard = false;
         }
         TrainingTarget defender = Spawn(type, position);
-        if (guard) defender.ConfigureGuardPost(position);
-        else defender.ConfigureAttackObjective(playerFortress);
+        // Every fortress enemy advances. They attack the player when intercepted
+        // and otherwise push the player's objective.
+        defender.ConfigureAttackObjective(playerFortress);
     }
 
     private void OnGUI()

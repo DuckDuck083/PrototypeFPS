@@ -166,7 +166,7 @@ public sealed class GameMenu : MonoBehaviour
             return;
         }
 
-        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : inventoryOpen ? 760f : adminOpen ? 720f : loadoutOpen ? 640f : playModeOpen ? 820f : 610f;
+        float contentHeight = shopOpen && shopCategory == 2 ? 840f : shopOpen && shopCategory == 3 ? 1050f : shopOpen ? 720f : inventoryOpen ? 760f : adminOpen ? 720f : loadoutOpen ? 1080f : playModeOpen ? 820f : 610f;
         Rect viewport = new Rect(0f, 0f, Screen.width, Screen.height);
         Rect content = new Rect(0f, 0f, Mathf.Max(760f, Screen.width - 18f), Mathf.Max(contentHeight, Screen.height));
         pageScroll = GUI.BeginScrollView(viewport, pageScroll, content, false, true);
@@ -229,7 +229,7 @@ public sealed class GameMenu : MonoBehaviour
         GUIStyle notes = new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = true };
         notes.normal.textColor = new Color(0.76f, 0.86f, 0.92f);
         GUI.Label(new Rect(updateLog.x + 24f, updateLog.y + 45f, updateLog.width - 48f, 130f),
-            "• Rocket Launcher: fixed visible model and 4-round magazine\n• Q class abilities: Heavy stance, Recon scan, Assault adrenaline, Specialist EMP\n• Engineer turret modes: Suppression, Precision, Overwatch\n• Demolition field resupply and randomized wave events", notes);
+            "• Rocket Launcher: fixed visible model and 4-round magazine\n• Q class abilities: Heavy stance, Sniper scan, Scout adrenaline, Specialist EMP\n• Engineer turret modes: Suppression, Precision, Overwatch\n• Demolition field resupply and randomized wave events", notes);
 
         float buttonWidth = Mathf.Min(330f, Screen.width * 0.36f);
         float buttonX = Screen.width - buttonWidth - 42f;
@@ -625,8 +625,8 @@ public sealed class GameMenu : MonoBehaviour
 
     private static void DrawClassShop(EconomyManager economy)
     {
-        string[] names = { "SOLDIER", "HEAVY", "ENGINEER", "RECON", "DEMOLITION", "SPECIALIST", "PIRATE", "ASSAULT" };
-        string[] roles = { "Balanced fighter", "Armored frontline", "Change turret modes with Q", "Precision positioning", "Explosives specialist", "Advanced weapons and gadgets", "Black-powder bruiser", "Fast close assault" };
+        string[] names = { "SOLDIER", "HEAVY", "ENGINEER", "SNIPER", "DEMOLITION", "SPECIALIST", "PIRATE", "SCOUT", "VAMPIRE", "GAMBLER", "FROST" };
+        string[] roles = { "Balanced fighter", "Armored frontline", "Turrets and repairs", "Precision and scan", "Explosives specialist", "Advanced gadgets", "Black-powder bruiser", "Fast double-jumper", "Fast lifesteal melee", "Randomized every round", "Slow and freeze control" };
         float width = Mathf.Min(210f, (Screen.width - 36f) / 3f);
         int maxColumns = Screen.width < 760 ? 3 : 4;
         for (int i = 0; i < names.Length; i++)
@@ -990,10 +990,11 @@ public sealed class GameMenu : MonoBehaviour
 
     private void DrawClassSelector(float startX, float panelWidth, float y)
     {
-        string[] classNames = { "SOLDIER", "HEAVY", "ENGINEER", "RECON", "DEMOLITION", "SPECIALIST", "PIRATE", "ASSAULT" };
-        float classWidth = panelWidth / classNames.Length;
+        string[] classNames = { "SOLDIER", "HEAVY", "ENGINEER", "SNIPER", "DEMOLITION", "SPECIALIST", "PIRATE", "SCOUT", "VAMPIRE", "GAMBLER", "FROST" };
+        const int columns = 4;
+        float classWidth = panelWidth / columns;
         GUI.color = new Color(0.04f, 0.07f, 0.09f, 0.95f);
-        GUI.DrawTexture(new Rect(startX - 8f, y, panelWidth + 16f, 76f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(startX - 8f, y, panelWidth + 16f, 220f), Texture2D.whiteTexture);
         GUI.color = Color.white;
         GUI.Label(new Rect(startX, y - 29f, panelWidth, 28f), "SELECT CLASS", CenteredStyle(20));
         GUIStyle classStyle = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
@@ -1004,33 +1005,42 @@ public sealed class GameMenu : MonoBehaviour
             GUI.backgroundColor = active ? new Color(0.2f, 0.75f, 0.3f) : new Color(0.16f, 0.2f, 0.23f);
             GUI.enabled = unlocked;
             string classLabel = unlocked ? classNames[classIndex] : $"LOCKED\n{classNames[classIndex]}";
-            if (GUI.Button(new Rect(startX + classIndex * classWidth + 3f, y + 10f, classWidth - 7f, 54f), classLabel, classStyle))
+            int row = classIndex / columns;
+            int column = classIndex % columns;
+            Rect classButton = new Rect(startX + column * classWidth + 5f, y + 9f + row * 52f, classWidth - 44f, 44f);
+            if (GUI.Button(classButton, classLabel, classStyle))
             {
                 weapons.SetPlayerClass((SimpleRifle.PlayerClass)classIndex);
                 selectedLoadoutSlot = -1;
             }
             GUI.enabled = true;
+            if (GUI.Button(new Rect(classButton.xMax + 3f, classButton.y, 31f, classButton.height), "i"))
+                weapons.SetPlayerClass((SimpleRifle.PlayerClass)classIndex);
         }
         GUI.backgroundColor = Color.white;
+        GUI.Label(new Rect(startX + 12f, y + 169f, panelWidth - 24f, 42f), SimpleRifle.GetClassInfo(weapons.CurrentClass), CenteredStyle(13));
     }
 
     private void DrawLoadoutCards(float startX, float panelWidth)
     {
-        GUI.Label(new Rect(startX, 218f, panelWidth, 42f), $"{weapons.CurrentClass.ToString().ToUpper()} LOADOUT", CenteredStyle(28));
-        string[] slotLabels = { "SLOT 1", "SLOT 2", "MELEE", "UTILITY" };
-        float gap = 12f;
-        float cardWidth = (panelWidth - gap * 3f) / 4f;
+        string className = weapons.CurrentClass == SimpleRifle.PlayerClass.Sniper ? "SNIPER" : weapons.CurrentClass.ToString().ToUpper();
+        GUI.Label(new Rect(startX, 362f, panelWidth, 42f), $"{className} LOADOUT", CenteredStyle(28));
+        string[] slotLabels = { "PRIMARY", "SECONDARY", "MELEE", "UTILITY" };
+        float gap = 18f;
+        float cardWidth = (panelWidth - gap) * 0.5f;
         string hovered = null;
         for (int slot = 0; slot < 4; slot++)
         {
-            Rect card = new Rect(startX + slot * (cardWidth + gap), 275f, cardWidth, 230f);
+            int row = slot / 2;
+            int column = slot % 2;
+            Rect card = new Rect(startX + column * (cardWidth + gap), 414f + row * 210f, cardWidth, 190f);
             GUI.backgroundColor = new Color(0.12f, 0.18f, 0.22f);
             if (GUI.Button(card, "")) selectedLoadoutSlot = slot;
             GUI.backgroundColor = Color.white;
             GUI.Label(new Rect(card.x, card.y + 10f, card.width, 28f), slotLabels[slot], CenteredStyle(18));
-            DrawWeaponIcon(new Rect(card.x + 20f, card.y + 52f, card.width - 40f, 95f), slot, weapons.GetLoadoutSlotName(slot));
-            GUI.Label(new Rect(card.x + 8f, card.y + 158f, card.width - 16f, 42f), weapons.GetLoadoutSlotName(slot), CenteredStyle(15));
-            GUI.Label(new Rect(card.x + 8f, card.y + 204f, card.width - 16f, 20f), "CLICK TO CHANGE", CenteredStyle(11));
+            DrawWeaponIcon(new Rect(card.x + 22f, card.y + 43f, 135f, 104f), slot, weapons.GetLoadoutSlotName(slot));
+            GUI.Label(new Rect(card.x + 174f, card.y + 57f, card.width - 190f, 48f), weapons.GetLoadoutSlotName(slot), CenteredStyle(17));
+            GUI.Label(new Rect(card.x + 174f, card.y + 112f, card.width - 190f, 24f), "CLICK TO CHANGE", CenteredStyle(11));
             if (card.Contains(Event.current.mousePosition))
                 hovered = weapons.GetWeaponStats(slot, weapons.GetLoadoutSlotIndex(slot));
         }
@@ -1040,11 +1050,12 @@ public sealed class GameMenu : MonoBehaviour
     private void DrawWeaponPicker(float startX, float panelWidth, int slot)
     {
         string[] slotLabels = { "SLOT 1", "SLOT 2", "MELEE", "UTILITY" };
-        GUI.Label(new Rect(startX, 218f, panelWidth, 42f), $"SELECT {slotLabels[slot]} WEAPON", CenteredStyle(28));
+        GUI.Label(new Rect(startX, 362f, panelWidth, 42f), $"SELECT {slotLabels[slot]} WEAPON", CenteredStyle(28));
         int count = weapons.GetClassOptionCount(slot);
         float gap = 16f;
-        float cardWidth = Mathf.Min(250f, (panelWidth - gap * (count - 1)) / count);
-        float totalWidth = cardWidth * count + gap * (count - 1);
+        int columns = Mathf.Min(3, count);
+        float cardWidth = Mathf.Min(260f, (panelWidth - gap * (columns - 1)) / columns);
+        float totalWidth = cardWidth * columns + gap * (columns - 1);
         float x = (Screen.width - totalWidth) * 0.5f;
         string hovered = null;
         for (int option = 0; option < count; option++)
@@ -1052,7 +1063,9 @@ public sealed class GameMenu : MonoBehaviour
             int weapon = weapons.GetClassOptionIndex(slot, option);
             bool selected = weapons.IsLoadoutSelection(slot, weapon);
             bool unlocked = EconomyManager.Instance == null || EconomyManager.Instance.IsWeaponUnlocked(slot, weapon);
-            Rect card = new Rect(x + option * (cardWidth + gap), 285f, cardWidth, 235f);
+            int row = option / columns;
+            int column = option % columns;
+            Rect card = new Rect(x + column * (cardWidth + gap), 417f + row * 250f, cardWidth, 235f);
             GUI.backgroundColor = selected ? new Color(0.15f, 0.65f, 0.9f) : new Color(0.14f, 0.19f, 0.22f);
             GUI.enabled = unlocked;
             if (GUI.Button(card, ""))

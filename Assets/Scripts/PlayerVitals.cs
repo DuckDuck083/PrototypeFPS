@@ -31,9 +31,18 @@ public sealed class PlayerVitals : MonoBehaviour, IDamageable
             : playerClass == SimpleRifle.PlayerClass.Scout ? 90f
             : playerClass == SimpleRifle.PlayerClass.Demoman ? 130f
             : playerClass == SimpleRifle.PlayerClass.Pirate ? 140f
+            : playerClass == SimpleRifle.PlayerClass.Vampire ? 125f
+            : playerClass == SimpleRifle.PlayerClass.Gambler ? 120f
+            : playerClass == SimpleRifle.PlayerClass.Frost ? 135f
             : 100f;
         maximumHealth = maximumHealth * modeHealthMultiplier + PerkBonusHealth;
         runHealthMultiplier = 1f;
+        Health = maximumHealth;
+    }
+
+    public void RollGamblerHealth()
+    {
+        maximumHealth = Random.Range(100, 161) * modeHealthMultiplier + PerkBonusHealth;
         Health = maximumHealth;
     }
 

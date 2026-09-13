@@ -55,6 +55,7 @@ public sealed class WaveManager : MonoBehaviour
     private void StartWave(int wave)
     {
         CurrentWave = wave;
+        FindAnyObjectByType<SimpleRifle>()?.RollGamblerLoadout();
         SaveProgress();
         waitingForNextWave = false;
         int normalCount = wave == 1 ? 5 : wave == 2 ? 8 : 7 + wave;
@@ -145,6 +146,10 @@ public sealed class WaveManager : MonoBehaviour
         AddPart(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 1f * scale, 0f), new Vector3(0.72f, 0.9f, 0.72f) * scale, uniform, true);
         AddPart(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.86f * scale, 0f), Vector3.one * 0.52f * scale, uniform, true);
         AddPart(root.transform, "Vest", PrimitiveType.Cube, new Vector3(0f, 1.15f * scale, 0.05f), new Vector3(0.78f, 0.58f, 0.42f) * scale, gear);
+        AddPart(root.transform, "Left Boot", PrimitiveType.Cube, new Vector3(-0.2f, 0.3f, 0.04f), new Vector3(0.25f, 0.52f, 0.3f) * scale, gear);
+        AddPart(root.transform, "Right Boot", PrimitiveType.Cube, new Vector3(0.2f, 0.3f, 0.04f), new Vector3(0.25f, 0.52f, 0.3f) * scale, gear);
+        AddPart(root.transform, "Helmet", PrimitiveType.Sphere, new Vector3(0f, 1.96f * scale, 0f), new Vector3(0.62f, 0.35f, 0.62f) * scale, gear);
+        AddPart(root.transform, "Visor", PrimitiveType.Cube, new Vector3(0f, 1.9f * scale, 0.26f * scale), new Vector3(0.42f, 0.1f, 0.08f) * scale, MakeUnlitMaterial(uniformColor));
         AddPart(root.transform, "Enemy Beacon", PrimitiveType.Sphere, new Vector3(0f, 2.55f * scale, 0f), Vector3.one * 0.2f, MakeUnlitMaterial(uniformColor));
 
         if (type != TrainingTarget.EnemyArchetype.Normal)

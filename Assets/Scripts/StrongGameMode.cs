@@ -35,6 +35,7 @@ public sealed class StrongGameMode : GameModeBase
     private void StartRound()
     {
         Spawner.ClearEnemies();
+        FindAnyObjectByType<SimpleRifle>()?.RollGamblerLoadout();
         round++;
         resolving = false;
         int count = Random.Range(20, 31);

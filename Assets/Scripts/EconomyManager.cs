@@ -24,7 +24,7 @@ public sealed class EconomyManager : MonoBehaviour
     };
     public static readonly int[] PerkPrices = { 650, 800, 900, 750, 700, 725, 1000, 850, 1100, 950, 1250 };
     public static readonly int[] ModePrices = { 0, 0, 900, 1100, 1600, 1300 };
-    public static readonly int[] ClassPrices = { 0, 700, 750, 800, 850, 1100, 1200, 950 };
+    public static readonly int[] ClassPrices = { 0, 700, 750, 800, 850, 1100, 1200, 950, 1100, 1250, 1150 };
     public static readonly string[] LootNames = { "FIELD MEDKIT", "AMMO SATCHEL", "TRAUMA PLATE", "ADRENALINE" };
     public static readonly string[] LootDescriptions = { "Start Hardcore with +25 health", "Start with 35% more reserve ammo", "Start with +20 max health", "Start with full stamina and brief regeneration" };
     public static readonly int[] LootPrices = { 300, 450, 600, 500 };
@@ -282,8 +282,12 @@ public sealed class EconomyManager : MonoBehaviour
             : type == TrainingTarget.EnemyArchetype.Rifle ? 15
             : type == TrainingTarget.EnemyArchetype.Handgun || type == TrainingTarget.EnemyArchetype.Knife ? 8 : 3;
         if (IsPerkUnlocked(6)) reward = Mathf.RoundToInt(reward * 1.2f);
+        SimpleRifle playerWeapons = FindAnyObjectByType<SimpleRifle>();
+        bool luckyKill = playerWeapons != null && playerWeapons.CurrentClass == SimpleRifle.PlayerClass.Gambler && Random.value < 0.12f;
+        if (luckyKill) reward = Mathf.RoundToInt(reward * 1.5f);
         AwardMatchCredits(reward, $"+{reward} ENEMY BOUNTY");
-        AddExperience(type == TrainingTarget.EnemyArchetype.Tank ? 35 : type == TrainingTarget.EnemyArchetype.Sniper || type == TrainingTarget.EnemyArchetype.Demolition ? 20 : 8);
+        int xp = type == TrainingTarget.EnemyArchetype.Tank ? 35 : type == TrainingTarget.EnemyArchetype.Sniper || type == TrainingTarget.EnemyArchetype.Demolition ? 20 : 8;
+        AddExperience(luckyKill ? Mathf.RoundToInt(xp * 1.5f) : xp);
         if (type != TrainingTarget.EnemyArchetype.Normal) AddQuestProgress(0, 1);
         if (type == TrainingTarget.EnemyArchetype.Tank) AddQuestProgress(2, 1);
     }

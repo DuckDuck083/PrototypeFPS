@@ -57,13 +57,24 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         CreateBlock("East Wall", new Vector3(83f, 3f, 0f), new Vector3(2f, 6f, 168f), wall);
         CreateBlock("West Wall", new Vector3(-83f, 3f, 0f), new Vector3(2f, 6f, 168f), wall);
 
+        // Repeated lane markings break up the giant flat floor and make routes
+        // readable without adding collision or navigation clutter.
+        Material lane = CreateArenaMaterial(new Color(0.72f, 0.55f, 0.12f), 0.05f, 0.2f);
+        for (int z = -68; z <= 68; z += 8)
+            CreateDecoration("Center Lane " + z, new Vector3(0f, 0.025f, z), new Vector3(0.18f, 0.03f, 3.8f), lane);
+        for (int z = -64; z <= 64; z += 16)
+        {
+            CreateDecoration("West Route " + z, new Vector3(-26f, 0.022f, z), new Vector3(0.12f, 0.025f, 7f), accent);
+            CreateDecoration("East Route " + z, new Vector3(26f, 0.022f, z), new Vector3(0.12f, 0.025f, 7f), accent);
+        }
+
         Vector3[] coverPositions =
         {
-            new Vector3(7f, 1f, 14f), new Vector3(-9f, 1f, 18f), new Vector3(16f, 1f, 2f),
-            new Vector3(-17f, 1f, -4f), new Vector3(8f, 1f, -17f), new Vector3(-6f, 1f, -24f)
+            new Vector3(13f, 0.65f, 16f), new Vector3(-15f, 0.65f, 18f),
+            new Vector3(17f, 0.65f, -13f), new Vector3(-18f, 0.65f, -16f)
         };
         for (int i = 0; i < coverPositions.Length; i++)
-            CreateBlock($"Cover {i + 1}", coverPositions[i], new Vector3(4f, 2f, 1.3f), i % 2 == 0 ? cover : accent);
+            CreateBlock($"Jumpable Cover {i + 1}", coverPositions[i], new Vector3(4f, 1.3f, 1.1f), i % 2 == 0 ? cover : accent);
 
         CreateBlock("Long Range Platform", new Vector3(0f, 0.6f, 31f), new Vector3(14f, 1.2f, 6f), accent);
         CreateBlock("West Tower", new Vector3(-30f, 2f, 22f), new Vector3(7f, 4f, 7f), wall);
@@ -84,35 +95,32 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         CreateBlock("Command Entrance Left", new Vector3(-4.5f, 1.5f, -37.3f), new Vector3(8f, 3f, 0.6f), cover);
         CreateBlock("Command Entrance Right", new Vector3(4.5f, 1.5f, -37.3f), new Vector3(8f, 3f, 0.6f), cover);
 
-        CreateBlock("West Barracks", new Vector3(-39f, 1.8f, -12f), new Vector3(13f, 3.6f, 22f), wall);
-        CreateBlock("East Barracks", new Vector3(39f, 1.8f, 12f), new Vector3(13f, 3.6f, 22f), wall);
-        CreateBlock("West Barracks Roof", new Vector3(-39f, 3.85f, -12f), new Vector3(14f, 0.5f, 23f), army);
-        CreateBlock("East Barracks Roof", new Vector3(39f, 3.85f, 12f), new Vector3(14f, 0.5f, 23f), army);
+        // Shorter buildings preserve the base silhouette while opening broad lanes
+        // around both sides for groups pursuing the player.
+        CreateBlock("West Barracks", new Vector3(-42f, 1.8f, -14f), new Vector3(10f, 3.6f, 14f), wall);
+        CreateBlock("East Barracks", new Vector3(42f, 1.8f, 14f), new Vector3(10f, 3.6f, 14f), wall);
 
         for (int side = -1; side <= 1; side += 2)
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < 4; i++)
         {
-            CreateBlock($"Perimeter Post {side} {i}", new Vector3(side * 48f, 1.6f, -32f + i * 10f), new Vector3(0.35f, 3.2f, 0.35f), cover);
-            CreateBlock($"Fence Rail {side} {i}", new Vector3(side * 48f, 1.7f, -27f + i * 10f), new Vector3(0.18f, 0.18f, 9.6f), cover);
+            CreateBlock($"Perimeter Post {side} {i}", new Vector3(side * 51f, 1.6f, -30f + i * 20f), new Vector3(0.35f, 3.2f, 0.35f), cover);
         }
 
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 6; i++)
         {
-            float x = -18f + i * 4f;
+            float x = -20f + i * 8f;
             CreateBlock($"Sandbag North {i}", new Vector3(x, 0.45f, 35f), new Vector3(3.4f, 0.65f, 0.8f), sandbag);
             if (i < 7) CreateBlock($"Sandbag Checkpoint {i}", new Vector3(-12f + i * 4f, 0.45f, -29f), new Vector3(3.4f, 0.65f, 0.8f), sandbag);
         }
 
         Vector3[] cratePositions =
         {
-            new Vector3(-28f, 0.75f, 5f), new Vector3(-25.5f, 0.75f, 7f), new Vector3(27f, 0.75f, -5f),
-            new Vector3(24f, 0.75f, -8f), new Vector3(-8f, 0.75f, 25f), new Vector3(11f, 0.75f, -22f),
-            new Vector3(31f, 0.75f, 31f), new Vector3(-32f, 0.75f, -35f)
+            new Vector3(-29f, 0.6f, 7f), new Vector3(29f, 0.6f, -7f),
+            new Vector3(-10f, 0.6f, 27f), new Vector3(12f, 0.6f, -25f)
         };
         for (int i = 0; i < cratePositions.Length; i++)
         {
-            CreateBlock($"Supply Crate {i}", cratePositions[i], new Vector3(1.5f, 1.5f, 1.5f), i % 2 == 0 ? army : warning);
-            if (i % 3 == 0) CreateBlock($"Stacked Crate {i}", cratePositions[i] + Vector3.up * 1.5f, new Vector3(1.5f, 1.5f, 1.5f), army);
+            CreateBlock($"Supply Crate {i}", cratePositions[i], new Vector3(1.4f, 1.2f, 1.4f), i % 2 == 0 ? army : warning);
         }
 
         // Leave a wide lane through the checkpoint so groups can pass without
@@ -193,6 +201,16 @@ public sealed class TrainingArenaSetup : MonoBehaviour
         block.transform.position = position;
         block.transform.localScale = scale;
         block.GetComponent<Renderer>().material = material;
+    }
+
+    private static void CreateDecoration(string name, Vector3 position, Vector3 scale, Material material)
+    {
+        GameObject decoration = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        decoration.name = name;
+        decoration.transform.position = position;
+        decoration.transform.localScale = scale;
+        decoration.GetComponent<Renderer>().material = material;
+        Destroy(decoration.GetComponent<Collider>());
     }
 
     private static Material CreateArenaMaterial(Color color, float metallic, float smoothness)

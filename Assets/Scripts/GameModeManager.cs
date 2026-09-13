@@ -59,6 +59,7 @@ public sealed class GameModeManager : MonoBehaviour
         foreach (GameModeBase mode in GetComponents<GameModeBase>())
             if (mode.Type == type) ActiveMode = mode;
         ActiveMode?.Begin(this);
+        FindAnyObjectByType<SimpleRifle>()?.RollGamblerLoadout();
         FindAnyObjectByType<PlayerVitals>()?.ApplyRunMutatorHealth();
     }
 

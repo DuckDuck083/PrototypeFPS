@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 
 public sealed class SimpleRifle : MonoBehaviour
 {
-    public enum PlayerClass { Soldier, Tank, Engineer, Sniper, Demoman, SpecialForce, Pirate, Scout }
+    public enum PlayerClass { Soldier, Tank, Engineer, Sniper, Demoman, SpecialForce, Pirate, Scout, Vampire, Gambler, Frost }
     private enum WeaponType { Rifle, Handgun, Melee, Sniper }
 
     [Header("References")]
@@ -48,6 +48,7 @@ public sealed class SimpleRifle : MonoBehaviour
     private WeaponType currentWeapon;
     private readonly int[] slotSelections = { 0, 0, 0, 0 };
     private readonly int[] builtVariants = { -1, -1, -1, -1 };
+    private bool applyingGamblerRoll;
     private int currentSlot;
     private const string SavedClassKey = "PrototypeFPS.Loadout.Class";
     private const string SavedSlotKeyPrefix = "PrototypeFPS.Loadout.Slot.";
@@ -120,6 +121,7 @@ public sealed class SimpleRifle : MonoBehaviour
         && attackAction.IsPressed()
         && !isReloading;
     public float MovementMultiplier => (CurrentClass == PlayerClass.Tank ? 0.68f : CurrentClass == PlayerClass.Scout ? 1.38f : 1f)
+        * (CurrentClass == PlayerClass.Vampire ? 1.12f : 1f)
         * (Time.time < energyDrinkUntil ? 1.32f : 1f)
         * (currentSlot == 0 && slotSelections[0] == 3 && attackAction.IsPressed() ? 0.62f : 1f)
         * ClassMovementMultiplier;
@@ -152,6 +154,8 @@ public sealed class SimpleRifle : MonoBehaviour
         LoadSavedLoadout();
         if (GetComponent<ClassAbilityController>() == null)
             gameObject.AddComponent<ClassAbilityController>();
+        if (GetComponent<NewClassController>() == null)
+            gameObject.AddComponent<NewClassController>();
     }
 
     private void OnEnable()
@@ -236,7 +240,9 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         if (slotIndex < 0 || slotIndex >= 4 || weaponIndex < 0 || weaponIndex >= SlotWeaponNames[slotIndex].Length)
             return;
-        if (EconomyManager.Instance != null && !EconomyManager.Instance.IsWeaponUnlocked(slotIndex, weaponIndex))
+        if (CurrentClass == PlayerClass.Gambler && !applyingGamblerRoll)
+            return;
+        if (CurrentClass != PlayerClass.Gambler && EconomyManager.Instance != null && !EconomyManager.Instance.IsWeaponUnlocked(slotIndex, weaponIndex))
             return;
         slotSelections[slotIndex] = weaponIndex;
         if (slotIndex == 0)
@@ -307,6 +313,11 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public string GetLoadoutOptionName(int slotIndex, int optionIndex)
     {
+        if (CurrentClass == PlayerClass.Vampire && slotIndex == 1 && optionIndex == 3) return "BLOOD VIAL";
+        if (CurrentClass == PlayerClass.Vampire && slotIndex == 3 && optionIndex == 7) return "BLOOD BOMB";
+        if (CurrentClass == PlayerClass.Frost && slotIndex == 0 && optionIndex == 9) return "CRYO PROJECTOR";
+        if (CurrentClass == PlayerClass.Frost && slotIndex == 1 && optionIndex == 9) return "ICE SHARD";
+        if (CurrentClass == PlayerClass.Frost && slotIndex == 3 && optionIndex == 2) return "FROST GRENADE";
         return slotIndex >= 0 && slotIndex < 4 && optionIndex >= 0 && optionIndex < SlotWeaponNames[slotIndex].Length
             ? SlotWeaponNames[slotIndex][optionIndex]
             : "EMPTY";
@@ -377,11 +388,33 @@ public sealed class SimpleRifle : MonoBehaviour
         new[] { new[] { 4 }, new[] { 6 }, new[] { 0, 3, 6 }, new[] { 3, 5 } },
         new[] { new[] { 11, 13 }, new[] { 9 }, new[] { 7, 3 }, new[] { 7 } },
         new[] { new[] { 12 }, new[] { 10 }, new[] { 8, 3 }, new[] { 8 } },
-        new[] { new[] { 15, 16 }, new[] { 1, 11 }, new[] { 9, 10 }, new[] { 9, 10 } }
+        new[] { new[] { 15, 16 }, new[] { 1, 11 }, new[] { 9, 10 }, new[] { 9, 10 } },
+        new[] { new[] { 14 }, new[] { 3 }, new[] { 2 }, new[] { 7 } },
+        new[] { new[] { 0 }, new[] { 1 }, new[] { 0 }, new[] { 1 } },
+        new[] { new[] { 9 }, new[] { 9 }, new[] { 4 }, new[] { 2 } }
     };
 
     public int GetClassOptionCount(int slotIndex) => ClassLoadouts[(int)CurrentClass][slotIndex].Length;
     public int GetClassOptionIndex(int slotIndex, int classOptionIndex) => ClassLoadouts[(int)CurrentClass][slotIndex][classOptionIndex];
+
+    public static string GetClassInfo(PlayerClass playerClass)
+    {
+        switch (playerClass)
+        {
+            case PlayerClass.Soldier: return "120 HP  •  NORMAL SPEED  •  BALANCED WEAPONS";
+            case PlayerClass.Tank: return "250 HP  •  SLOW  •  HEAVY WEAPONS  •  DEFENSIVE STANCE";
+            case PlayerClass.Engineer: return "140 HP  •  NORMAL SPEED  •  TURRETS AND REPAIRS";
+            case PlayerClass.Sniper: return "85 HP  •  NORMAL SPEED  •  PRECISION AND SCAN";
+            case PlayerClass.Demoman: return "130 HP  •  NORMAL SPEED  •  EXPLOSIVE RESISTANCE";
+            case PlayerClass.SpecialForce: return "100 HP  •  NORMAL SPEED  •  ADVANCED GADGETS";
+            case PlayerClass.Pirate: return "140 HP  •  NORMAL SPEED  •  BLACK-POWDER ARSENAL";
+            case PlayerClass.Scout: return "90 HP  •  VERY FAST  •  DOUBLE JUMP AND ADRENALINE";
+            case PlayerClass.Vampire: return "125 HP  •  FAST  •  KNIFE LIFESTEAL  •  SUNLIGHT DAMAGE";
+            case PlayerClass.Gambler: return "100-160 HP  •  RANDOM LOADOUT EACH ROUND  •  12% PAYOUT LUCK";
+            case PlayerClass.Frost: return "135 HP  •  NORMAL SPEED  •  STACKING SLOW AND FREEZE";
+            default: return string.Empty;
+        }
+    }
 
     public void SetPlayerClass(PlayerClass playerClass)
     {
@@ -402,6 +435,25 @@ public sealed class SimpleRifle : MonoBehaviour
         }
         PlayerPrefs.Save();
         SelectSlot(currentSlot);
+        if (CurrentClass == PlayerClass.Gambler) RollGamblerLoadout();
+    }
+
+    public void RollGamblerLoadout()
+    {
+        if (CurrentClass != PlayerClass.Gambler) return;
+        applyingGamblerRoll = true;
+        var chosen = new System.Collections.Generic.HashSet<string>();
+        for (int slot = 0; slot < 4; slot++)
+        {
+            int weapon;
+            int attempts = 0;
+            do weapon = Random.Range(0, SlotWeaponNames[slot].Length);
+            while (!chosen.Add(SlotWeaponNames[slot][weapon]) && ++attempts < 20);
+            SetLoadoutSlot(slot, weapon);
+        }
+        applyingGamblerRoll = false;
+        GetComponent<PlayerVitals>()?.RollGamblerHealth();
+        SelectSlot(currentSlot);
     }
 
     private void LoadSavedLoadout()
@@ -420,6 +472,11 @@ public sealed class SimpleRifle : MonoBehaviour
         }
 
         SetPlayerClass(CurrentClass);
+        // Apply magazine and reserve values for valid saved choices too. Previously
+        // only invalid choices were initialized, leaving the secondary shotgun at
+        // the scene's one-round handgun default.
+        for (int slot = 0; slot < slotSelections.Length; slot++)
+            SetLoadoutSlot(slot, slotSelections[slot]);
     }
 
     private void SelectSlot(int slotIndex)
@@ -750,7 +807,10 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 6) UpdateSniperCharge();
             else if (option == 7 && attackAction.WasPressedThisFrame() && !burstFiring) StartCoroutine(FireBurstRifle());
             else if (option == 8 && attackAction.WasPressedThisFrame()) FireHitscan(58f, 0.72f, 1, IsAiming ? 0.004f : 0.018f, false);
-            else if (option == 9 && attackAction.WasPressedThisFrame()) FireElectricalArc();
+            else if (option == 9 && attackAction.WasPressedThisFrame())
+            {
+                if (CurrentClass == PlayerClass.Frost) FireFrostWeapon(); else FireElectricalArc();
+            }
             else if (option == 10 && attackAction.WasPressedThisFrame()) LaunchIncendiary(true);
             else if (option == 11 && attackAction.IsPressed()) FireHitscan(16f, 0.085f, 1, IsAiming ? 0.006f : 0.02f, false);
             else if (option == 12 && attackAction.WasPressedThisFrame()) FireHitscan(72f, 1.15f, 1, IsAiming ? 0.002f : 0.012f, true);
@@ -776,7 +836,10 @@ public sealed class SimpleRifle : MonoBehaviour
             else if (option == 6 && attackAction.WasPressedThisFrame()) LaunchStickyBomb();
             else if (option == 7 && attackAction.IsPressed()) FireHitscan(13f, 0.09f, 1, IsAiming ? 0.006f : 0.02f, false);
             else if (option == 8 && attackAction.IsPressed()) FireHitscan(14f, 0.08f, 1, IsAiming ? 0.008f : 0.025f, false);
-            else if (option == 9 && attackAction.WasPressedThisFrame()) FirePoisonDart();
+            else if (option == 9 && attackAction.WasPressedThisFrame())
+            {
+                if (CurrentClass == PlayerClass.Frost) FireFrostWeapon(); else FirePoisonDart();
+            }
             else if (option == 10 && attackAction.WasPressedThisFrame()) FireHitscan(68f, 1.25f, 1, 0.018f, true);
             else if (option == 11 && attackAction.WasPressedThisFrame()) FireKickbackPistol();
         }
@@ -785,18 +848,25 @@ public sealed class SimpleRifle : MonoBehaviour
             float[] damages = { 45f, 38f, 60f, 85f, 78f, 52f, 68f, 72f, 64f, 70f, 58f };
             float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f, 0.78f, 0.55f, 0.62f, 0.7f, 0.58f, 0.48f, 0.34f };
             float movementBonus = option == 10 && GetComponent<CharacterController>().velocity.magnitude > 4f ? 1.4f : 1f;
-            SwingMelee(damages[option] * movementBonus, delays[option], option == 3 ? 3.2f : 2.4f, option == 2 ? 0.22f : 0f);
+            bool vampireKnife = CurrentClass == PlayerClass.Vampire && option == 2;
+            SwingMelee(vampireKnife ? 48f : damages[option] * movementBonus, vampireKnife ? 0.24f : delays[option], option == 3 ? 3.2f : 2.4f, option == 2 ? 0.22f : 0f);
         }
         else if (currentSlot == 3)
         {
             if (option == 0) UpdateSniperCharge();
             else if (option == 1) UpdateGrenadePriming();
-            else if (option == 2 && attackAction.WasPressedThisFrame()) ThrowSmokeGrenade();
+            else if (option == 2 && attackAction.WasPressedThisFrame())
+            {
+                if (CurrentClass == PlayerClass.Frost) ThrowFrostGrenade(); else ThrowSmokeGrenade();
+            }
             else if (option == 3 && attackAction.WasPressedThisFrame()) PlaceMine();
             else if (option == 4 && attackAction.WasPressedThisFrame()) FireHitscan(16f, 0.3f, 1, IsAiming ? 0.003f : 0.012f, false, 0f, false, 12f);
             else if (option == 5 && attackAction.WasPressedThisFrame()) ThrowFlashbang();
             else if (option == 6 && attackAction.WasPressedThisFrame()) PlaceBarrier();
-            else if (option == 7 && attackAction.WasPressedThisFrame()) LaunchIncendiary(false);
+            else if (option == 7 && attackAction.WasPressedThisFrame())
+            {
+                if (CurrentClass == PlayerClass.Vampire) ThrowBloodBomb(); else LaunchIncendiary(false);
+            }
             else if (option == 8 && attackAction.WasPressedThisFrame()) LaunchPirateCannon();
             else if (option == 9 && attackAction.WasPressedThisFrame()) DrinkEnergyDrink();
             else if (option == 10 && attackAction.WasPressedThisFrame()) ActivateBlinkDrive();
@@ -1476,10 +1546,59 @@ public sealed class SimpleRifle : MonoBehaviour
                 return;
             }
             ApplyDamage(hit, meleeDamage, false, randomCritChance);
+            if (CurrentClass == PlayerClass.Vampire && currentSlot == 2 && slotSelections[2] == 2)
+                GetComponent<PlayerVitals>().Heal(meleeDamage * 0.35f);
             if (currentSlot == 2 && slotSelections[2] == 7)
                 GetComponent<PlayerVitals>().Heal(22f);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
+    }
+
+    private void FireFrostWeapon()
+    {
+        if (CurrentAmmo <= 0) { TryReload(); return; }
+        SetCurrentAmmo(CurrentAmmo - 1);
+        nextShotTime = Time.time + 0.28f;
+        Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
+        Vector3 end = ray.GetPoint(range);
+        if (Physics.Raycast(ray, out RaycastHit hit, range, ~0, QueryTriggerInteraction.Ignore))
+        {
+            end = hit.point;
+            TrainingTarget target = hit.collider.GetComponentInParent<TrainingTarget>();
+            if (target != null) { target.MarkPlayerDamage(this); target.TakeDamage(20f); target.ApplyFrost(1); }
+        }
+        CreateColoredTracer(end, new Color(0.3f, 0.9f, 1f), 0.045f, 0.14f);
+    }
+
+    private void ThrowFrostGrenade()
+    {
+        if (sniperAmmo <= 0) return;
+        sniperAmmo--;
+        nextShotTime = Time.time + 0.8f;
+        GameObject grenade = CreateClassThrowable("Frost Grenade", new Color(0.2f, 0.8f, 1f));
+        grenade.AddComponent<FrostGrenade>();
+    }
+
+    private void ThrowBloodBomb()
+    {
+        if (sniperAmmo <= 0) return;
+        sniperAmmo--;
+        nextShotTime = Time.time + 0.9f;
+        GameObject bomb = CreateClassThrowable("Blood Bomb", new Color(0.55f, 0.01f, 0.03f));
+        bomb.AddComponent<BloodBomb>().Configure(this, GetComponent<PlayerVitals>());
+    }
+
+    private GameObject CreateClassThrowable(string itemName, Color color)
+    {
+        GameObject item = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        item.name = itemName;
+        item.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 0.8f;
+        item.transform.localScale = Vector3.one * 0.26f;
+        item.GetComponent<Renderer>().material = RuntimeMaterials.Unlit(color);
+        Rigidbody body = item.AddComponent<Rigidbody>();
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.linearVelocity = playerCamera.transform.forward * 13f + Vector3.up * 3.3f;
+        return item;
     }
 
     private void ApplyDamage(RaycastHit hit, float baseDamage, bool allowHeadshotCritical = false, float randomCritChance = 0f, bool ignoresFalloff = false)
@@ -1521,8 +1640,8 @@ public sealed class SimpleRifle : MonoBehaviour
         int oldPrimary = rifleReserveAmmo;
         int oldSecondary = handgunReserveAmmo;
         int oldSpecial = sniperAmmo + sniperReserveAmmo;
-        int[] primaryAdds = { 60, 4, 16, 160, 12, 16, 10, 48, 10, 40, 8, 72, 10 };
-        int[] primaryCaps = { 180, 12, 64, 400, 48, 48, 24, 192, 40, 200, 32, 288, 50 };
+        int[] primaryAdds = { 60, 4, 16, 160, 12, 16, 10, 48, 10, 40, 8, 72, 10, 60, 10, 20, 54 };
+        int[] primaryCaps = { 180, 12, 64, 400, 48, 48, 24, 192, 40, 200, 32, 288, 50, 240, 40, 80, 216 };
         rifleReserveAmmo = Mathf.Min(primaryCaps[slotSelections[0]], rifleReserveAmmo + primaryAdds[slotSelections[0]]);
 
         if (slotSelections[1] == 1) handgunReserveAmmo = Mathf.Min(96, handgunReserveAmmo + 24);
@@ -1539,8 +1658,8 @@ public sealed class SimpleRifle : MonoBehaviour
             sniperAmmo = Mathf.Min(20, sniperAmmo + 15);
         else
         {
-            int[] specialistAdds = { 0, 4, 4, 2, 0, 3, 5, 3, 4 };
-            int[] specialistCaps = { 1, 8, 8, 8, 20, 6, 5, 6, 8 };
+            int[] specialistAdds = { 0, 4, 4, 2, 0, 3, 5, 3, 4, 0, 0 };
+            int[] specialistCaps = { 1, 8, 8, 8, 20, 6, 5, 6, 8, 0, 0 };
             sniperAmmo = Mathf.Min(specialistCaps[slotSelections[3]], sniperAmmo + specialistAdds[slotSelections[3]]);
         }
 
