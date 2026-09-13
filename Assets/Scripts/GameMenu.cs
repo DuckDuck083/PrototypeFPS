@@ -1040,10 +1040,13 @@ public sealed class GameMenu : MonoBehaviour
         float gap = 18f;
         float cardWidth = (panelWidth - gap) * 0.5f;
         string hovered = null;
-        for (int slot = 0; slot < 4; slot++)
+        int firstSlot = weapons.CurrentClass == SimpleRifle.PlayerClass.Vampire ? 1 : 0;
+        int slotCount = weapons.CurrentClass == SimpleRifle.PlayerClass.Vampire ? 3 : 4;
+        for (int displaySlot = 0; displaySlot < slotCount; displaySlot++)
         {
-            int row = slot / 2;
-            int column = slot % 2;
+            int slot = firstSlot + displaySlot;
+            int row = displaySlot / 2;
+            int column = displaySlot % 2;
             Rect card = new Rect(startX + column * (cardWidth + gap), 414f + row * 210f, cardWidth, 190f);
             GUI.backgroundColor = new Color(0.12f, 0.18f, 0.22f);
             bool available = weapons.IsClassSlotAvailable(slot);
@@ -1051,7 +1054,8 @@ public sealed class GameMenu : MonoBehaviour
             if (GUI.Button(card, "")) selectedLoadoutSlot = slot;
             GUI.enabled = true;
             GUI.backgroundColor = Color.white;
-            GUI.Label(new Rect(card.x, card.y + 10f, card.width, 28f), slotLabels[slot], CenteredStyle(18));
+            string slotLabel = weapons.CurrentClass == SimpleRifle.PlayerClass.Vampire ? $"ITEM {displaySlot + 1}" : slotLabels[slot];
+            GUI.Label(new Rect(card.x, card.y + 10f, card.width, 28f), slotLabel, CenteredStyle(18));
             DrawWeaponIcon(new Rect(card.x + 22f, card.y + 43f, 135f, 104f), slot, weapons.GetLoadoutSlotName(slot));
             GUI.Label(new Rect(card.x + 174f, card.y + 57f, card.width - 190f, 48f), weapons.GetLoadoutSlotName(slot), CenteredStyle(17));
             GUI.Label(new Rect(card.x + 174f, card.y + 112f, card.width - 190f, 24f), available ? "CLICK TO CHANGE" : "NOT AVAILABLE", CenteredStyle(11));

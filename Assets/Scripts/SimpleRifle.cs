@@ -218,10 +218,19 @@ public sealed class SimpleRifle : MonoBehaviour
 
         if (!isReloading)
         {
-            if (rifleSelectAction.WasPressedThisFrame()) SelectSlot(0);
-            if (handgunSelectAction.WasPressedThisFrame()) SelectSlot(1);
-            if (meleeSelectAction.WasPressedThisFrame()) SelectSlot(2);
-            if (sniperSelectAction.WasPressedThisFrame()) SelectSlot(3);
+            if (CurrentClass == PlayerClass.Vampire)
+            {
+                if (rifleSelectAction.WasPressedThisFrame()) SelectSlot(1);
+                if (handgunSelectAction.WasPressedThisFrame()) SelectSlot(2);
+                if (meleeSelectAction.WasPressedThisFrame()) SelectSlot(3);
+            }
+            else
+            {
+                if (rifleSelectAction.WasPressedThisFrame()) SelectSlot(0);
+                if (handgunSelectAction.WasPressedThisFrame()) SelectSlot(1);
+                if (meleeSelectAction.WasPressedThisFrame()) SelectSlot(2);
+                if (sniperSelectAction.WasPressedThisFrame()) SelectSlot(3);
+            }
         }
 
         if (reloadAction.WasPressedThisFrame())
@@ -411,7 +420,7 @@ public sealed class SimpleRifle : MonoBehaviour
             case PlayerClass.SpecialForce: return "100 HP  •  NORMAL SPEED  •  ADVANCED GADGETS";
             case PlayerClass.Pirate: return "140 HP  •  NORMAL SPEED  •  BLACK-POWDER ARSENAL";
             case PlayerClass.Scout: return "90 HP  •  VERY FAST  •  DOUBLE JUMP AND ADRENALINE";
-            case PlayerClass.Vampire: return "125 HP  •  FAST  •  3 ITEMS  •  KNIFE LIFESTEAL  •  SEVERE SUNLIGHT DAMAGE";
+            case PlayerClass.Vampire: return "125 HP  •  FAST  •  3 ITEMS  •  KNIFE LIFESTEAL  •  +35% MELEE DAMAGE TAKEN  •  SEVERE SUNLIGHT DAMAGE";
             case PlayerClass.Gambler: return "100-160 HP  •  RANDOM LOADOUT EACH ROUND  •  12% PAYOUT LUCK";
             case PlayerClass.Frost: return "135 HP  •  NORMAL SPEED  •  STACKING SLOW AND FREEZE";
             default: return string.Empty;
@@ -1897,7 +1906,7 @@ public sealed class SimpleRifle : MonoBehaviour
         GUIStyle centered = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 22 };
         centered.normal.textColor = Color.white;
         if (!scoped) GUI.Label(new Rect(Screen.width * 0.5f - 15f, Screen.height * 0.5f - 15f, 30f, 30f), "+", centered);
-        string weaponName = SlotWeaponNames[currentSlot][slotSelections[currentSlot]];
+        string weaponName = GetLoadoutOptionName(currentSlot, slotSelections[currentSlot]);
         bool hidesAmmo = currentSlot == 2 || (currentSlot == 1 && (slotSelections[1] == 0 || slotSelections[1] == 3 || slotSelections[1] == 5))
             || (currentSlot == 3 && slotSelections[3] >= 9);
         string ammoText = hidesAmmo ? weaponName
@@ -1909,7 +1918,10 @@ public sealed class SimpleRifle : MonoBehaviour
         GUI.Label(new Rect(Screen.width - 290f, Screen.height - 84f, 255f, 40f), ammoText, centered);
         GUIStyle help = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontSize = 13 };
         help.normal.textColor = new Color(0.75f, 0.82f, 0.88f);
-        GUI.Label(new Rect(Screen.width * 0.5f - 390f, 12f, 780f, 28f), $"{CurrentClass.ToString().ToUpper()}   [1] {GetLoadoutSlotName(0)}   [2] {GetLoadoutSlotName(1)}   [3] {GetLoadoutSlotName(2)}   [4] {GetLoadoutSlotName(3)}", help);
+        string loadoutHelp = CurrentClass == PlayerClass.Vampire
+            ? $"VAMPIRE   [1] {GetLoadoutSlotName(1)}   [2] {GetLoadoutSlotName(2)}   [3] {GetLoadoutSlotName(3)}"
+            : $"{CurrentClass.ToString().ToUpper()}   [1] {GetLoadoutSlotName(0)}   [2] {GetLoadoutSlotName(1)}   [3] {GetLoadoutSlotName(2)}   [4] {GetLoadoutSlotName(3)}";
+        GUI.Label(new Rect(Screen.width * 0.5f - 390f, 12f, 780f, 28f), loadoutHelp, help);
 
         GUI.color = new Color(0.01f, 0.025f, 0.04f, 0.82f);
         GUI.DrawTexture(new Rect(Screen.width - 292f, 165f, 272f, 108f), Texture2D.whiteTexture);
@@ -1917,7 +1929,7 @@ public sealed class SimpleRifle : MonoBehaviour
         GUIStyle controls = new GUIStyle(GUI.skin.label) { fontSize = 10, wordWrap = true };
         controls.normal.textColor = new Color(0.76f, 0.86f, 0.92f);
         GUI.Label(new Rect(Screen.width - 282f, 171f, 252f, 96f),
-            $"WASD MOVE  •  SHIFT SPRINT  •  SPACE JUMP\nCTRL/C CROUCH  •  P PAUSE  •  1–4 EQUIP\n{CurrentControlHint()}", controls);
+            $"WASD MOVE  •  SHIFT SPRINT  •  SPACE JUMP\nCTRL/C CROUCH  •  P PAUSE  •  {(CurrentClass == PlayerClass.Vampire ? "1–3" : "1–4")} EQUIP\n{CurrentControlHint()}", controls);
 
         if (CurrentClass == PlayerClass.Scout)
         {
@@ -2006,7 +2018,7 @@ public sealed class SimpleRifle : MonoBehaviour
             return "LMB — USE UTILITY";
         }
         if (currentSlot == 1 && option == 0) return "HOLD LMB — BLOCK WITH SHIELD";
-        if (currentSlot == 1 && option == 3) return "LMB — USE MEDPACK";
+        if (currentSlot == 1 && option == 3) return CurrentClass == PlayerClass.Vampire ? "LMB — USE BLOOD VIAL" : "LMB — USE MEDPACK";
         if (currentSlot == 0 && option == 5 || currentSlot == 1 && option == 6) return "LMB — LAUNCH STICKY  •  RMB — DETONATE";
         if (IsSniperRifleEquipped) return "RMB — SCOPE  •  LMB — CHARGED SHOT  •  R — RELOAD";
         return "LMB — FIRE  •  RMB — AIM  •  R — RELOAD";

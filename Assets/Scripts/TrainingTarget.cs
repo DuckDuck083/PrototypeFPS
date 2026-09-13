@@ -207,7 +207,13 @@ public sealed class TrainingTarget : MonoBehaviour, IDamageable
                 else if (attackObjective != null && !attackObjective.IsDestroyed)
                     attackObjective.TakeDamage(attackDamage);
                 else
-                    player.TakeDamage(attackDamage * (Time.time < officerBuffUntil ? 1.25f : 1f), transform.position);
+                {
+                    float dealtDamage = attackDamage * (Time.time < officerBuffUntil ? 1.25f : 1f);
+                    SimpleRifle playerWeapons = player.GetComponent<SimpleRifle>();
+                    if (!usesRangedWeapon && playerWeapons != null && playerWeapons.CurrentClass == SimpleRifle.PlayerClass.Vampire)
+                        dealtDamage *= 1.35f;
+                    player.TakeDamage(dealtDamage, transform.position);
+                }
                 if (usesRangedWeapon && archetype != EnemyArchetype.Demolition) DrawEnemyTracer(attackTarget.position + Vector3.up);
                 if (usesRangedWeapon) weaponAmmo--;
             }
