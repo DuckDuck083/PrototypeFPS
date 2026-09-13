@@ -10,7 +10,6 @@ public sealed class SimpleRifle : MonoBehaviour
     [Header("References")]
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private Camera playerCamera;
-    [SerializeField] private GameObject assault1Prefab;
 
     [Header("Rifle")]
     [SerializeField, Min(1)] private int rifleMagazineSize = 30;
@@ -242,6 +241,8 @@ public sealed class SimpleRifle : MonoBehaviour
             return;
         if (CurrentClass == PlayerClass.Gambler && !applyingGamblerRoll)
             return;
+        if (CurrentClass != PlayerClass.Gambler && System.Array.IndexOf(ClassLoadouts[(int)CurrentClass][slotIndex], weaponIndex) < 0)
+            return;
         if (CurrentClass != PlayerClass.Gambler && EconomyManager.Instance != null && !EconomyManager.Instance.IsWeaponUnlocked(slotIndex, weaponIndex))
             return;
         slotSelections[slotIndex] = weaponIndex;
@@ -286,9 +287,9 @@ public sealed class SimpleRifle : MonoBehaviour
 
     public string GetLoadoutSlotName(int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex >= 4)
+        if (!IsClassSlotAvailable(slotIndex))
             return "EMPTY";
-        return SlotWeaponNames[slotIndex][slotSelections[slotIndex]];
+        return GetLoadoutOptionName(slotIndex, slotSelections[slotIndex]);
     }
 
     public int GetLoadoutSlotIndex(int slotIndex) => slotIndex >= 0 && slotIndex < 4 ? slotSelections[slotIndex] : 0;
@@ -329,7 +330,7 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         if (slotIndex == 0 && optionIndex == 6) return "Charged shots pierce up to 3 enemies.";
         if (slotIndex == 0 && optionIndex == 13) return "58 damage • pinpoint beam • no range falloff";
-        if (slotIndex == 0 && optionIndex == 14) return "115 damage • silent • 3× headshots";
+        if (slotIndex == 0 && optionIndex == 14) return "75 damage • slow draw • 3× headshots";
         if (slotIndex == 0 && optionIndex == 15) return "2 shells • rapid shotgun blast • wide spread";
         if (slotIndex == 2 && optionIndex == 9) return "Fast, heavy close-range strikes";
         if (slotIndex == 3 && optionIndex == 9) return "7s speed + damage boost • take 40% more damage";
@@ -345,14 +346,14 @@ public sealed class SimpleRifle : MonoBehaviour
         string name = GetLoadoutOptionName(slot, weapon);
         if (slot == 0)
         {
-            float[] damage = { 24, 110, 144, 10, 95, 120, 98, 51, 58, 64, 80, 16, 72, 58, 115, 150, 20 };
+            float[] damage = { 24, 110, 144, 10, 95, 120, 98, 51, 58, 64, 80, 16, 72, 58, 75, 150, 20 };
             int[] clips = { 30, 4, 8, 100, 6, 8, 1, 24, 5, 20, 4, 36, 5, 24, 1, 2, 18 };
             string[] traits =
             {
                 "Automatic • balanced", "Explosive splash", "12-pellet spread", "Extreme fire rate",
                 "Bouncing explosive", "Remote sticky bombs", "Charge • pierces 3 enemies", "Three-round burst",
                 "Heavy impact", "Chains between enemies", "Ignites targets", "Fast movement weapon",
-                "Bolt action • headshots", "No falloff • pinpoint", "Silent • 3× headshots", "10 pellets • ultra-fast shotgun",
+                "Bolt action • headshots", "No falloff • pinpoint", "Slow draw • 3× headshots", "10 pellets • ultra-fast shotgun",
                 "32 damage while airborne • accurate automatic"
             };
             return $"{name}\nAVERAGE DAMAGE  {damage[weapon]:0}\nBULLETS PER CLIP  {clips[weapon]}\nABILITY  {traits[weapon]}";
@@ -381,21 +382,22 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private static readonly int[][][] ClassLoadouts =
     {
-        new[] { new[] { 1, 0, 7, 10, 13, 14 }, new[] { 1, 4, 7 }, new[] { 0, 3, 6 }, new[] { 1 } },
+        new[] { new[] { 0, 1, 7 }, new[] { 1, 4, 7 }, new[] { 0, 3, 6 }, new[] { 1 } },
         new[] { new[] { 3, 8 }, new[] { 0, 8 }, new[] { 1, 4, 3 }, new[] { 2, 3 } },
         new[] { new[] { 2, 7, 9 }, new[] { 5, 7 }, new[] { 5, 3 }, new[] { 3, 6 } },
-        new[] { new[] { 6, 14 }, new[] { 2, 7 }, new[] { 2, 3, 6 }, new[] { 4 } },
+        new[] { new[] { 6, 12, 13, 14 }, new[] { 2, 7 }, new[] { 2, 3, 6 }, new[] { 4 } },
         new[] { new[] { 4 }, new[] { 6 }, new[] { 0, 3, 6 }, new[] { 3, 5 } },
         new[] { new[] { 11, 13 }, new[] { 9 }, new[] { 7, 3 }, new[] { 7 } },
         new[] { new[] { 12 }, new[] { 10 }, new[] { 8, 3 }, new[] { 8 } },
         new[] { new[] { 15, 16 }, new[] { 1, 11 }, new[] { 9, 10 }, new[] { 9, 10 } },
-        new[] { new[] { 14 }, new[] { 3 }, new[] { 2 }, new[] { 7 } },
+        new[] { System.Array.Empty<int>(), new[] { 3 }, new[] { 2 }, new[] { 7 } },
         new[] { new[] { 0 }, new[] { 1 }, new[] { 0 }, new[] { 1 } },
         new[] { new[] { 9 }, new[] { 9 }, new[] { 4 }, new[] { 2 } }
     };
 
     public int GetClassOptionCount(int slotIndex) => ClassLoadouts[(int)CurrentClass][slotIndex].Length;
     public int GetClassOptionIndex(int slotIndex, int classOptionIndex) => ClassLoadouts[(int)CurrentClass][slotIndex][classOptionIndex];
+    public bool IsClassSlotAvailable(int slotIndex) => slotIndex >= 0 && slotIndex < 4 && ClassLoadouts[(int)CurrentClass][slotIndex].Length > 0;
 
     public static string GetClassInfo(PlayerClass playerClass)
     {
@@ -409,7 +411,7 @@ public sealed class SimpleRifle : MonoBehaviour
             case PlayerClass.SpecialForce: return "100 HP  •  NORMAL SPEED  •  ADVANCED GADGETS";
             case PlayerClass.Pirate: return "140 HP  •  NORMAL SPEED  •  BLACK-POWDER ARSENAL";
             case PlayerClass.Scout: return "90 HP  •  VERY FAST  •  DOUBLE JUMP AND ADRENALINE";
-            case PlayerClass.Vampire: return "125 HP  •  FAST  •  KNIFE LIFESTEAL  •  SUNLIGHT DAMAGE";
+            case PlayerClass.Vampire: return "125 HP  •  FAST  •  3 ITEMS  •  KNIFE LIFESTEAL  •  SEVERE SUNLIGHT DAMAGE";
             case PlayerClass.Gambler: return "100-160 HP  •  RANDOM LOADOUT EACH ROUND  •  12% PAYOUT LUCK";
             case PlayerClass.Frost: return "135 HP  •  NORMAL SPEED  •  STACKING SLOW AND FREEZE";
             default: return string.Empty;
@@ -430,12 +432,13 @@ public sealed class SimpleRifle : MonoBehaviour
         for (int slot = 0; slot < 4; slot++)
         {
             int[] allowed = ClassLoadouts[(int)CurrentClass][slot];
+            if (allowed.Length == 0) continue;
             if (System.Array.IndexOf(allowed, slotSelections[slot]) < 0)
                 SetLoadoutSlot(slot, allowed[0]);
         }
         PlayerPrefs.Save();
+        if (!IsClassSlotAvailable(currentSlot)) currentSlot = 1;
         SelectSlot(currentSlot);
-        if (CurrentClass == PlayerClass.Gambler) RollGamblerLoadout();
     }
 
     public void RollGamblerLoadout()
@@ -466,7 +469,8 @@ public sealed class SimpleRifle : MonoBehaviour
 
         for (int slot = 0; slot < slotSelections.Length; slot++)
         {
-            int fallback = ClassLoadouts[(int)CurrentClass][slot][0];
+            int[] allowed = ClassLoadouts[(int)CurrentClass][slot];
+            int fallback = allowed.Length > 0 ? allowed[0] : 0;
             int savedWeapon = PlayerPrefs.GetInt(SavedSlotKeyPrefix + slot, fallback);
             slotSelections[slot] = Mathf.Clamp(savedWeapon, 0, SlotWeaponNames[slot].Length - 1);
         }
@@ -481,6 +485,7 @@ public sealed class SimpleRifle : MonoBehaviour
 
     private void SelectSlot(int slotIndex)
     {
+        if (!IsClassSlotAvailable(slotIndex)) return;
         currentSlot = slotIndex;
         SelectWeapon((WeaponType)slotIndex);
         BuildSelectedVariantModel(slotIndex);
@@ -498,25 +503,13 @@ public sealed class SimpleRifle : MonoBehaviour
             ? EconomyManager.Instance.GetWeaponSkinColor(slotIndex, option)
             : new Color(0.2f, 0.23f, 0.26f));
 
-        if (slotIndex == 0 && option == 1 && assault1Prefab != null)
+        if (slotIndex == 0 && option == 1)
         {
-            GameObject weaponModel = Instantiate(assault1Prefab, model);
-            weaponModel.name = "Assault1 Rocket Launcher Model";
-            weaponModel.transform.localPosition = new Vector3(0f, -0.08f, 0.28f);
-            weaponModel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
-            weaponModel.transform.localScale = Vector3.one * 0.7f;
-            weaponModel.SetActive(true);
-            foreach (Renderer modelRenderer in weaponModel.GetComponentsInChildren<Renderer>(true))
-            {
-                modelRenderer.gameObject.SetActive(true);
-                modelRenderer.enabled = true;
-            }
-            foreach (Collider modelCollider in weaponModel.GetComponentsInChildren<Collider>(true))
-                Destroy(modelCollider);
-            // Keep a compact procedural tube visible even if an imported model's
-            // materials or hierarchy are unavailable in a player build.
+            // A procedural model avoids serialized prefab type mismatches and is
+            // guaranteed to render in both the editor and standalone builds.
             AddPart(model, "Rocket Tube", new Vector3(0f, 0f, 0.3f), new Vector3(0.24f, 0.24f, 1.15f), metal);
             AddPart(model, "Rocket Tube Bore", new Vector3(0f, 0.02f, 0.96f), new Vector3(0.1f, 0.1f, 0.28f), dark);
+            AddPart(model, "Rocket Grip", new Vector3(0f, -0.2f, 0.08f), new Vector3(0.12f, 0.32f, 0.15f), dark, 10f);
         }
         else if (slotIndex == 0)
         {
@@ -849,7 +842,7 @@ public sealed class SimpleRifle : MonoBehaviour
             float[] delays = { 0.65f, 0.32f, 0.48f, 0.9f, 0.78f, 0.55f, 0.62f, 0.7f, 0.58f, 0.48f, 0.34f };
             float movementBonus = option == 10 && GetComponent<CharacterController>().velocity.magnitude > 4f ? 1.4f : 1f;
             bool vampireKnife = CurrentClass == PlayerClass.Vampire && option == 2;
-            SwingMelee(vampireKnife ? 48f : damages[option] * movementBonus, vampireKnife ? 0.24f : delays[option], option == 3 ? 3.2f : 2.4f, option == 2 ? 0.22f : 0f);
+            SwingMelee(vampireKnife ? 48f : damages[option] * movementBonus, vampireKnife ? 0.24f : delays[option], option == 3 ? 3.2f : 2.4f, option == 2 && !vampireKnife ? 0.22f : 0f);
         }
         else if (currentSlot == 3)
         {
@@ -950,7 +943,7 @@ public sealed class SimpleRifle : MonoBehaviour
     {
         if (CurrentAmmo <= 0) { TryReload(); return; }
         SetCurrentAmmo(CurrentAmmo - 1);
-        nextShotTime = Time.time + 0.9f;
+        nextShotTime = Time.time + 1.15f;
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         Vector3 end = ray.GetPoint(range);
         bool hitEnemy = false;
@@ -958,7 +951,7 @@ public sealed class SimpleRifle : MonoBehaviour
         {
             end = hit.point;
             hitEnemy = hit.collider.GetComponentInParent<TrainingTarget>() != null;
-            ApplyDamage(hit, 115f, true, 0f, true);
+            ApplyDamage(hit, 75f, true, 0f, true);
             CreateBulletHole(hit.point, hit.normal, hit.transform);
         }
         CreateColoredTracer(end, new Color(0.72f, 0.42f, 0.12f), 0.018f, 0.22f);

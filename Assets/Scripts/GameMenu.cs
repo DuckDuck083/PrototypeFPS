@@ -238,7 +238,8 @@ public sealed class GameMenu : MonoBehaviour
         DrawHomeTile(new Rect(buttonX, top, buttonWidth, buttonHeight), pausedMatch ? "RESUME" : "PLAY", pausedMatch ? "Return to match" : "Choose game mode", new Color(0.15f, 0.65f, 0.95f), () => { if (pausedMatch) ResumeMatch(); else { pageScroll = Vector2.zero; playModeOpen = true; } });
         DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap), buttonWidth, buttonHeight), "TUTORIAL", "Soldier training and enemy guide", new Color(0.3f, 0.85f, 1f), () => StartGame(GameModeManager.Mode.Tutorial));
         DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 2f, buttonWidth, buttonHeight), "INVENTORY", "Weapons and skins", new Color(0.25f, 0.82f, 0.72f), () => { pageScroll = Vector2.zero; inventoryOpen = true; inventorySkinsOpen = false; });
-        DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 3f, buttonWidth, buttonHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
+        if (!pausedMatch)
+            DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 3f, buttonWidth, buttonHeight), "LOADOUT", "Classes and equipment", new Color(0.2f, 0.8f, 0.5f), () => { pageScroll = Vector2.zero; loadoutOpen = true; selectedLoadoutSlot = -1; });
         DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 4f, buttonWidth, buttonHeight), "BLACK MARKET", "Shop and crates", new Color(0.95f, 0.48f, 0.14f), () => { pageScroll = Vector2.zero; shopOpen = true; });
         DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 5f, buttonWidth, buttonHeight), "QUEST BOARD", "Contracts and rewards", new Color(0.72f, 0.35f, 0.95f), () => { pageScroll = Vector2.zero; questsOpen = true; });
         DrawHomeTile(new Rect(buttonX, top + (buttonHeight + gap) * 6f, buttonWidth, buttonHeight), "PROMO CODES", "Redeem rewards", new Color(0.95f, 0.74f, 0.18f), () => { pageScroll = Vector2.zero; promoOpen = true; });
@@ -868,6 +869,11 @@ public sealed class GameMenu : MonoBehaviour
 
     private void DrawLoadout()
     {
+        if (pausedMatch)
+        {
+            loadoutOpen = false;
+            return;
+        }
         float panelWidth = Mathf.Min(900f, Screen.width - 30f);
         float startX = (Screen.width - panelWidth) * 0.5f;
         DrawClassSelector(startX, panelWidth, 128f);
@@ -1025,6 +1031,11 @@ public sealed class GameMenu : MonoBehaviour
     {
         string className = weapons.CurrentClass == SimpleRifle.PlayerClass.Sniper ? "SNIPER" : weapons.CurrentClass.ToString().ToUpper();
         GUI.Label(new Rect(startX, 362f, panelWidth, 42f), $"{className} LOADOUT", CenteredStyle(28));
+        if (weapons.CurrentClass == SimpleRifle.PlayerClass.Gambler)
+        {
+            GUI.Label(new Rect(startX, 430f, panelWidth, 80f), "LOADOUT HIDDEN\nRandom weapons are revealed when the round begins.", CenteredStyle(18));
+            return;
+        }
         string[] slotLabels = { "PRIMARY", "SECONDARY", "MELEE", "UTILITY" };
         float gap = 18f;
         float cardWidth = (panelWidth - gap) * 0.5f;
@@ -1035,12 +1046,15 @@ public sealed class GameMenu : MonoBehaviour
             int column = slot % 2;
             Rect card = new Rect(startX + column * (cardWidth + gap), 414f + row * 210f, cardWidth, 190f);
             GUI.backgroundColor = new Color(0.12f, 0.18f, 0.22f);
+            bool available = weapons.IsClassSlotAvailable(slot);
+            GUI.enabled = available;
             if (GUI.Button(card, "")) selectedLoadoutSlot = slot;
+            GUI.enabled = true;
             GUI.backgroundColor = Color.white;
             GUI.Label(new Rect(card.x, card.y + 10f, card.width, 28f), slotLabels[slot], CenteredStyle(18));
             DrawWeaponIcon(new Rect(card.x + 22f, card.y + 43f, 135f, 104f), slot, weapons.GetLoadoutSlotName(slot));
             GUI.Label(new Rect(card.x + 174f, card.y + 57f, card.width - 190f, 48f), weapons.GetLoadoutSlotName(slot), CenteredStyle(17));
-            GUI.Label(new Rect(card.x + 174f, card.y + 112f, card.width - 190f, 24f), "CLICK TO CHANGE", CenteredStyle(11));
+            GUI.Label(new Rect(card.x + 174f, card.y + 112f, card.width - 190f, 24f), available ? "CLICK TO CHANGE" : "NOT AVAILABLE", CenteredStyle(11));
             if (card.Contains(Event.current.mousePosition))
                 hovered = weapons.GetWeaponStats(slot, weapons.GetLoadoutSlotIndex(slot));
         }
